@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebEditor – Mein erster HTML-Editor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#f0f4ff; --surface:#fff; --surface2:#e8edf8; --border:#c8d4f0;
+    --accent:#4361ee; --accent2:#3a0ca3; --text:#1a1a2e; --text2:#555577;
+    --green:#06d6a0; --yellow:#ffd166; --orange:#f4a261;
+  }
+  body { font-family:'Nunito',sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* HEADER */
+  header { background:linear-gradient(90deg,var(--accent2),var(--accent)); color:#fff; padding:0 20px; height:52px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 12px rgba(67,97,238,.25); flex-shrink:0; z-index:100; }
+  header .logo { font-size:1.3rem; font-weight:800; display:flex; align-items:center; gap:8px; }
+  header .logo span { color:var(--yellow); }
+  header .tagline { font-size:.78rem; opacity:.75; border-left:1px solid rgba(255,255,255,.3); padding-left:14px; }
+  header .spacer { flex:1; }
+  header button.hbtn { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); color:#fff; padding:6px 14px; border-radius:7px; font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; transition:background .15s; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  header button.hbtn:hover { background:rgba(255,255,255,.28); }
+
+  /* TOOLBAR */
+  #toolbar { background:var(--surface); border-bottom:1.5px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+  .tb-row { padding:5px 12px; display:flex; align-items:center; gap:3px; overflow-x:auto; }
+  .tb-row:first-child { border-bottom:1px solid var(--surface2); }
+  .tb-sep { width:1px; height:22px; background:var(--border); margin:0 3px; flex-shrink:0; }
+  .tb-btn { background:transparent; border:1px solid transparent; border-radius:6px; padding:4px 8px; font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; color:var(--text2); transition:all .12s; display:flex; align-items:center; gap:3px; white-space:nowrap; flex-shrink:0; }
+  .tb-btn:hover { background:var(--surface2); border-color:var(--border); color:var(--accent); }
+  .tb-btn.tb-active { background:var(--accent); color:#fff!important; border-color:var(--accent); }
+  .tb-select { border:1px solid var(--border); border-radius:6px; padding:3px 6px; font-family:inherit; font-size:.82rem; background:var(--surface); color:var(--text); cursor:pointer; flex-shrink:0; max-width:130px; }
+  .tb-select.tb-active { border-color:var(--accent); background:#eef1ff; font-weight:700; }
+  .tb-color { width:26px; height:26px; border-radius:6px; border:1.5px solid var(--border); cursor:pointer; padding:1px; flex-shrink:0; }
+  .tb-label { font-size:.7rem; color:var(--text2); font-weight:700; white-space:nowrap; }
+
+  /* FORMAT BAR */
+  #format-bar { background:#f8f9ff; border-bottom:1px solid var(--border); padding:3px 14px; font-size:.72rem; color:var(--text2); display:flex; align-items:center; gap:10px; flex-shrink:0; flex-wrap:wrap; min-height:22px; }
+  #format-bar .fi { display:flex; align-items:center; gap:4px; }
+  #format-bar .fi-label { color:#aab; font-weight:700; }
+  #format-bar .fi-val { color:var(--accent2); font-weight:800; font-family:'JetBrains Mono',monospace; font-size:.7rem; background:var(--surface2); padding:1px 6px; border-radius:4px; }
+  #format-bar .fi-tag { background:var(--accent); color:#fff; padding:1px 6px; border-radius:4px; font-weight:800; font-family:'JetBrains Mono',monospace; font-size:.68rem; }
+  #format-bar .fi-sep { color:#dde; }
+
+  /* MAIN */
+  #main { display:flex; flex:1; overflow:hidden; }
+
+  /* SIDEBAR */
+  #sidebar { width:186px; background:var(--surface); border-right:1.5px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+  #sidebar h3 { font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--text2); padding:10px 14px 4px; }
+  #page-list { flex:1; overflow-y:auto; padding:4px 8px; }
+  .page-item { display:flex; align-items:center; gap:3px; padding:6px 8px; border-radius:7px; cursor:pointer; font-size:.81rem; font-weight:600; color:var(--text2); transition:all .12s; margin-bottom:2px; }
+  .page-item:hover { background:var(--surface2); color:var(--accent); }
+  .page-item.active { background:var(--accent); color:#fff; }
+  .page-item .pi-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .pi-icon-btn { opacity:0; font-size:.68rem; border:none; background:none; color:inherit; cursor:pointer; padding:2px 4px; border-radius:4px; flex-shrink:0; line-height:1; }
+  .page-item:hover .pi-icon-btn,.page-item.active .pi-icon-btn { opacity:.8; }
+  .pi-icon-btn:hover { opacity:1!important; background:rgba(255,255,255,.3); }
+  #add-page-btn { margin:6px 8px 8px; padding:7px; border:1.5px dashed var(--border); background:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:.8rem; color:var(--text2); font-weight:700; transition:all .12s; display:flex; align-items:center; justify-content:center; gap:6px; }
+  #add-page-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--surface2); }
+
+  /* PANELS */
+  #panels { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  #view-tabs { display:flex; background:var(--surface2); border-bottom:1.5px solid var(--border); padding:0 14px; gap:2px; flex-shrink:0; }
+  .vtab { padding:7px 16px; font-family:inherit; font-size:.82rem; font-weight:700; border:none; background:transparent; color:var(--text2); cursor:pointer; border-bottom:2.5px solid transparent; margin-bottom:-1.5px; transition:all .15s; display:flex; align-items:center; gap:6px; }
+  .vtab:hover { color:var(--accent); }
+  .vtab.active { color:var(--accent); border-bottom-color:var(--accent); background:var(--surface); border-radius:6px 6px 0 0; }
+  #split-view { flex:1; display:flex; overflow:hidden; }
+  #editor-pane,#code-pane,#preview-pane { flex:1; overflow:hidden; display:none; flex-direction:column; }
+  #editor-pane.visible,#code-pane.visible,#preview-pane.visible { display:flex; }
+  #split-view.split-mode #editor-pane,#split-view.split-mode #code-pane { display:flex; flex:1; }
+  #split-view.split-mode #editor-pane { border-right:2px solid var(--border); }
+
+  /* EDITOR CONTENT */
+  #editor-content { flex:1; padding:24px 36px; overflow-y:auto; outline:none; font-size:1rem; line-height:1.7; color:var(--text); background:#fff; position:relative; }
+  #editor-content:empty::before { content:"Hier tippen oder Text einfügen…"; color:#aab; pointer-events:none; }
+  #editor-content h1 { font-size:2em; margin:.4em 0; }
+  #editor-content h2 { font-size:1.5em; margin:.4em 0; }
+  #editor-content h3 { font-size:1.2em; margin:.4em 0; }
+  #editor-content p  { margin:.4em 0; }
+  #editor-content ul,#editor-content ol { margin:.4em 0 .4em 1.8em; }
+  #editor-content table { border-collapse:collapse; width:100%; margin:.5em 0; }
+  #editor-content table td,#editor-content table th { border:1.5px solid #c8d4f0; padding:6px 10px; }
+  #editor-content table th { background:#e8edf8; font-weight:700; }
+  #editor-content a { color:var(--accent); text-decoration:underline; }
+  #editor-content blockquote { border-left:4px solid var(--accent); margin:.6em 0; padding:4px 16px; color:var(--text2); background:var(--surface2); border-radius:0 6px 6px 0; }
+  #editor-content hr { border:none; border-top:2px solid var(--border); margin:1em 0; }
+  #editor-content pre  { font-family:'JetBrains Mono',monospace; background:#f0f4ff; border-radius:5px; font-size:.9em; padding:10px 14px; overflow-x:auto; }
+  #editor-content code { font-family:'JetBrains Mono',monospace; background:#f0f4ff; border-radius:5px; font-size:.9em; padding:1px 5px; }
+  #editor-content .anchor-mark { display:inline-block; background:var(--orange); color:#fff; font-size:.65rem; font-weight:800; padding:1px 5px; border-radius:4px; font-family:'JetBrains Mono',monospace; cursor:default; user-select:none; vertical-align:middle; margin:0 2px; }
+
+  /* ── IMAGE WRAPPER (Word-style) ── */
+  /* Inline image (no float/position) */
+  .img-wrap {
+    display: inline-block;
+    position: relative;
+    line-height: 0;
+    vertical-align: bottom;
+    cursor: default;
+    user-select: none;
+  }
+  /* Float left – text wraps right */
+  .img-wrap.wrap-left  { float:left;  margin:4px 14px 6px 0; display:block; }
+  /* Float right – text wraps left */
+  .img-wrap.wrap-right { float:right; margin:4px 0 6px 14px; display:block; }
+  /* Behind text */
+  .img-wrap.wrap-behind { position:absolute; z-index:0; }
+  /* In front of text */
+  .img-wrap.wrap-front  { position:absolute; z-index:100; }
+
+  .img-wrap img { display:block; width:100%; height:100%; object-fit:cover; border-radius:4px; }
+
+  /* Selection outline */
+  .img-wrap.selected { outline:2px solid var(--accent); outline-offset:1px; }
+
+  /* Resize handles (8 directions) */
+  .img-wrap .rh {
+    position:absolute; width:10px; height:10px;
+    background:#fff; border:2px solid var(--accent);
+    border-radius:2px; z-index:200;
+    display:none;
+  }
+  .img-wrap.selected .rh { display:block; }
+  .rh.nw { top:-5px; left:-5px; cursor:nw-resize; }
+  .rh.n  { top:-5px; left:50%; transform:translateX(-50%); cursor:n-resize; }
+  .rh.ne { top:-5px; right:-5px; cursor:ne-resize; }
+  .rh.e  { top:50%; right:-5px; transform:translateY(-50%); cursor:e-resize; }
+  .rh.se { bottom:-5px; right:-5px; cursor:se-resize; }
+  .rh.s  { bottom:-5px; left:50%; transform:translateX(-50%); cursor:s-resize; }
+  .rh.sw { bottom:-5px; left:-5px; cursor:sw-resize; }
+  .rh.w  { top:50%; left:-5px; transform:translateY(-50%); cursor:w-resize; }
+
+  /* Drag overlay (cover whole editor during drag) */
+  #drag-overlay { position:fixed; inset:0; z-index:9999; display:none; }
+  #drag-overlay.active { display:block; }
+
+  /* IMAGE CONTEXT PANEL (floating, Word-like) */
+  #img-panel {
+    position:fixed; z-index:700;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:0 8px 32px rgba(67,97,238,.18);
+    padding:12px 14px;
+    display:none;
+    flex-direction:column;
+    gap:10px;
+    width:260px;
+    font-size:.82rem;
+  }
+  #img-panel.visible { display:flex; }
+  #img-panel h4 { font-size:.78rem; font-weight:800; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
+  .ip-row { display:flex; align-items:center; gap:6px; }
+  .ip-label { font-size:.75rem; color:var(--text2); font-weight:700; min-width:54px; }
+  .ip-val { font-size:.75rem; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-weight:700; background:var(--surface2); padding:1px 6px; border-radius:4px; min-width:44px; text-align:center; }
+  .ip-input { border:1px solid var(--border); border-radius:6px; padding:3px 7px; font-family:inherit; font-size:.8rem; width:65px; outline:none; color:var(--text); text-align:center; }
+  .ip-input:focus { border-color:var(--accent); }
+  .ip-slider { flex:1; accent-color:var(--accent); cursor:pointer; }
+  .ip-sep { height:1px; background:var(--border); margin:2px 0; }
+  /* Wrap mode buttons */
+  .wrap-btns { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; }
+  .wrap-btn {
+    background:var(--surface2); border:1.5px solid var(--border); border-radius:7px;
+    padding:5px 2px; cursor:pointer; display:flex; flex-direction:column; align-items:center;
+    gap:2px; font-size:.62rem; color:var(--text2); font-weight:700; transition:all .12s; line-height:1.2;
+  }
+  .wrap-btn:hover { border-color:var(--accent); color:var(--accent); background:#eef1ff; }
+  .wrap-btn.on { border-color:var(--accent); background:var(--accent); color:#fff; }
+  .wrap-btn .wi { font-size:1.1rem; line-height:1; }
+  .ip-close { position:absolute; top:8px; right:10px; border:none; background:none; font-size:.9rem; cursor:pointer; color:var(--text2); }
+  .ip-btn-row { display:flex; gap:6px; }
+  .ip-btn { flex:1; padding:5px; border-radius:7px; border:1px solid var(--border); background:var(--surface2); font-family:inherit; font-size:.76rem; font-weight:700; cursor:pointer; color:var(--text2); transition:all .12s; }
+  .ip-btn:hover { background:var(--surface2); border-color:var(--accent); color:var(--accent); }
+  .ip-btn.del { background:rgba(247,37,133,.08); border-color:rgba(247,37,133,.3); color:#f72585; }
+  .ip-btn.del:hover { background:rgba(247,37,133,.18); }
+
+  /* CODE PANE */
+  #code-pane { background:#1a1a2e; }
+  #code-pane-header { padding:8px 14px; background:#12122a; color:#aac; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  #code-pane-header span { flex:1; }
+  #code-sync-btn { background:var(--green); color:#111; border:none; border-radius:5px; padding:4px 10px; font-family:inherit; font-size:.78rem; font-weight:800; cursor:pointer; }
+  #code-editor { flex:1; width:100%; border:none; outline:none; background:#1e1e3a; color:#c8d8ff; font-family:'JetBrains Mono',monospace; font-size:.85rem; line-height:1.7; padding:16px 20px; resize:none; overflow-y:auto; tab-size:2; }
+
+  /* PREVIEW */
+  #preview-pane { background:#e0e6f8; }
+  #preview-bar { padding:8px 14px; background:#12122a; color:#aac; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; flex-shrink:0; display:flex; align-items:center; }
+  #preview-bar span { flex:1; }
+  #preview-frame-wrap { flex:1; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; }
+  #preview-frame { background:#fff; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,.18); width:100%; max-width:900px; height:100%; border:none; }
+
+  /* MODALS */
+  .modal-overlay { position:fixed; inset:0; background:rgba(26,26,46,.55); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; z-index:999; opacity:0; pointer-events:none; transition:opacity .18s; }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal { background:#fff; border-radius:14px; padding:26px 30px; width:420px; box-shadow:0 20px 60px rgba(67,97,238,.2); transform:scale(.95); transition:transform .18s; }
+  .modal-overlay.open .modal { transform:scale(1); }
+  .modal h2 { font-size:1.05rem; margin-bottom:14px; }
+  .modal label { font-size:.79rem; color:var(--text2); font-weight:700; display:block; margin-bottom:3px; }
+  .modal input[type=text],.modal input[type=number],.modal select { width:100%; border:1.5px solid var(--border); border-radius:8px; padding:7px 11px; font-family:inherit; font-size:.88rem; outline:none; margin-bottom:12px; background:#fff; }
+  .modal input:focus,.modal select:focus { border-color:var(--accent); }
+  .modal .hint { font-size:.76rem; color:var(--text2); margin-bottom:12px; background:var(--surface2); border-radius:7px; padding:7px 10px; line-height:1.5; }
+  .modal .modal-btns { display:flex; gap:10px; justify-content:flex-end; margin-top:4px; }
+  .mbtn { padding:7px 18px; border-radius:8px; font-family:inherit; font-size:.85rem; font-weight:700; cursor:pointer; border:none; }
+  .mbtn.primary { background:var(--accent); color:#fff; }
+  .mbtn.secondary { background:var(--surface2); color:var(--text2); }
+  .modal-tabs { display:flex; gap:6px; margin-bottom:14px; }
+  .modal-tab { padding:5px 14px; border-radius:7px; font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; border:1.5px solid var(--border); background:var(--surface2); color:var(--text2); transition:all .12s; }
+  .modal-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .modal-section { display:none; } .modal-section.active { display:block; }
+
+  /* STATUS */
+  #status { background:var(--accent2); color:rgba(255,255,255,.75); font-size:.72rem; padding:3px 16px; flex-shrink:0; display:flex; gap:20px; align-items:center; }
+  #status .sitem b { color:#fff; }
+  ::-webkit-scrollbar { width:7px; height:7px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🌐 <span>Web</span>Editor</div>
+  <div class="tagline">Mein erster HTML-Editor · Klasse 7</div>
+  <div class="spacer"></div>
+  <button class="hbtn" onclick="saveProject()">💾 Speichern</button>
+  <button class="hbtn" onclick="loadProjectClick()">📂 Laden</button>
+  <button class="hbtn" onclick="downloadCurrentHTML()">⬇️ HTML</button>
+  <input type="file" id="load-input" accept=".json" style="display:none" onchange="loadProject(event)">
+</header>
+
+<div id="toolbar">
+  <div class="tb-row">
+    <select class="tb-select" id="sel-style" onchange="applyStyle(this.value);this.value='';">
+      <option value="">Stil…</option><option value="p">Absatz</option>
+      <option value="h1">Überschrift 1</option><option value="h2">Überschrift 2</option>
+      <option value="h3">Überschrift 3</option><option value="blockquote">Zitat</option><option value="pre">Code-Block</option>
+    </select>
+    <select class="tb-select" id="sel-font" onchange="execCmd('fontName',this.value);">
+      <option value="Arial">Arial</option><option value="Georgia">Georgia</option>
+      <option value="'Courier New'">Courier New</option><option value="'Times New Roman'">Times New Roman</option>
+      <option value="Verdana">Verdana</option><option value="'Comic Sans MS'">Comic Sans</option>
+    </select>
+    <select class="tb-select" id="sel-size" onchange="execCmd('fontSize',this.value);">
+      <option value="1">Klein</option><option value="2">Kleiner</option><option value="3" selected>Normal</option>
+      <option value="4">Mittel</option><option value="5">Groß</option><option value="6">Größer</option><option value="7">Riesig</option>
+    </select>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" id="btn-bold"      onclick="execCmd('bold')"><b>B</b></button>
+    <button class="tb-btn" id="btn-italic"    onclick="execCmd('italic')"><i>I</i></button>
+    <button class="tb-btn" id="btn-underline" onclick="execCmd('underline')"><u>U</u></button>
+    <button class="tb-btn" id="btn-strike"    onclick="execCmd('strikeThrough')"><s>S</s></button>
+    <div class="tb-sep"></div>
+    <span class="tb-label">Textfarbe</span>
+    <input type="color" class="tb-color" id="col-fore" value="#1a1a2e" onchange="execCmd('foreColor',this.value)">
+    <span class="tb-label">Hintergrund</span>
+    <input type="color" class="tb-color" id="col-bg"   value="#ffffff" onchange="execCmd('hiliteColor',this.value)">
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="execCmd('justifyLeft')">⬅</button>
+    <button class="tb-btn" onclick="execCmd('justifyCenter')">⬌</button>
+    <button class="tb-btn" onclick="execCmd('justifyRight')">➡</button>
+  </div>
+  <div class="tb-row">
+    <button class="tb-btn" onclick="execCmd('insertUnorderedList')">• Liste</button>
+    <button class="tb-btn" onclick="execCmd('insertOrderedList')">1. Liste</button>
+    <button class="tb-btn" onclick="insertHR()">─ Linie</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="insertLink()">🔗 Link</button>
+    <button class="tb-btn" onclick="insertAnchor()">⚓ Anker</button>
+    <button class="tb-btn" onclick="insertImagePrompt()">🖼 Bild</button>
+    <button class="tb-btn" onclick="insertTable()">⊞ Tabelle</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="execCmd('undo')">↩ Rückgängig</button>
+    <button class="tb-btn" onclick="execCmd('redo')">↪ Wiederholen</button>
+  </div>
+</div>
+
+<div id="format-bar">
+  <span class="fi"><span class="fi-label">Element:</span> <span id="fi-tag" class="fi-tag">p</span></span>
+  <span class="fi-sep">·</span>
+  <span class="fi"><span class="fi-label">Schrift:</span> <span id="fi-font" class="fi-val">–</span></span>
+  <span class="fi-sep">·</span>
+  <span class="fi"><span class="fi-label">Größe:</span> <span id="fi-size" class="fi-val">–</span></span>
+  <span class="fi-sep">·</span>
+  <span class="fi"><span class="fi-label">Format:</span> <span id="fi-fmt" class="fi-val">Normal</span></span>
+  <span class="fi-sep">·</span>
+  <span class="fi"><span class="fi-label">Farbe:</span>
+    <span id="fi-color" style="display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid #ccc;vertical-align:middle;"></span>
+  </span>
+</div>
+
+<!-- drag overlay to capture mouse during resize/drag -->
+<div id="drag-overlay"></div>
+
+<!-- IMAGE PANEL -->
+<div id="img-panel">
+  <button class="ip-close" onclick="closeImgPanel()" title="Schließen">✕</button>
+  <div>
+    <h4>📐 Größe</h4>
+    <div class="ip-row">
+      <span class="ip-label">Breite</span>
+      <input class="ip-input" type="number" id="ip-w" min="20" max="2000" step="1" oninput="applyImgSize()">
+      <span style="font-size:.75rem;color:var(--text2);">px</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--text2);margin:0;cursor:pointer;">
+        <input type="checkbox" id="ip-lock" checked> ⛓ Proportional
+      </label>
+    </div>
+    <div class="ip-row">
+      <span class="ip-label">Höhe</span>
+      <input class="ip-input" type="number" id="ip-h" min="20" max="2000" step="1" oninput="applyImgSize('h')">
+      <span style="font-size:.75rem;color:var(--text2);">px</span>
+    </div>
+  </div>
+  <div class="ip-sep"></div>
+  <div>
+    <h4>📦 Textfluss</h4>
+    <div class="wrap-btns">
+      <button class="wrap-btn" id="wb-inline" onclick="applyWrap('inline')" title="Inline (im Textfluss)">
+        <span class="wi">▭</span>Inline
+      </button>
+      <button class="wrap-btn" id="wb-left" onclick="applyWrap('left')" title="Text fließt rechts vorbei">
+        <span class="wi">◧</span>Links
+      </button>
+      <button class="wrap-btn" id="wb-right" onclick="applyWrap('right')" title="Text fließt links vorbei">
+        <span class="wi">◨</span>Rechts
+      </button>
+      <button class="wrap-btn" id="wb-behind" onclick="applyWrap('behind')" title="Hinter dem Text">
+        <span class="wi">⬕</span>Hinten
+      </button>
+      <button class="wrap-btn" id="wb-front" onclick="applyWrap('front')" title="Vor dem Text">
+        <span class="wi">⬔</span>Vorne
+      </button>
+    </div>
+    <div class="ip-row" style="margin-top:6px;" id="ip-pos-row">
+      <span class="ip-label">X</span>
+      <input class="ip-input" type="number" id="ip-x" step="1" oninput="applyImgPos()">
+      <span class="ip-label" style="margin-left:4px;">Y</span>
+      <input class="ip-input" type="number" id="ip-y" step="1" oninput="applyImgPos()">
+    </div>
+  </div>
+  <div class="ip-sep"></div>
+  <div>
+    <h4>🎨 Darstellung</h4>
+    <div class="ip-row">
+      <span class="ip-label">Deckkraft</span>
+      <input type="range" class="ip-slider" id="ip-op" min="10" max="100" value="100" oninput="applyImgOpacity(this.value)">
+      <span class="ip-val" id="ip-op-val">100%</span>
+    </div>
+    <div class="ip-row">
+      <span class="ip-label">Ecken</span>
+      <input type="range" class="ip-slider" id="ip-rad" min="0" max="50" value="4" oninput="applyImgRadius(this.value)">
+      <span class="ip-val" id="ip-rad-val">4px</span>
+    </div>
+  </div>
+  <div class="ip-sep"></div>
+  <div class="ip-btn-row">
+    <button class="ip-btn del" onclick="deleteSelectedImg()">🗑 Löschen</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <h3>📄 Seiten</h3>
+    <div id="page-list"></div>
+    <button id="add-page-btn" onclick="addPage()">＋ Neue Seite</button>
+  </div>
+  <div id="panels">
+    <div id="view-tabs">
+      <button class="vtab active" onclick="setView('editor')"  id="tab-editor">✏️ Editor</button>
+      <button class="vtab"        onclick="setView('split')"   id="tab-split">⬛ Geteilt</button>
+      <button class="vtab"        onclick="setView('code')"    id="tab-code">💻 HTML</button>
+      <button class="vtab"        onclick="setView('preview')" id="tab-preview">👁 Vorschau</button>
+    </div>
+    <div id="split-view">
+      <div id="editor-pane" class="visible">
+        <div id="editor-content" contenteditable="true" spellcheck="true"></div>
+      </div>
+      <div id="code-pane">
+        <div id="code-pane-header">
+          <span>🔤 HTML-Quellcode</span>
+          <button id="code-sync-btn" onclick="syncCodeToEditor()">↩ In Editor übernehmen</button>
+        </div>
+        <textarea id="code-editor" spellcheck="false"></textarea>
+      </div>
+      <div id="preview-pane">
+        <div id="preview-bar"><span>🌐 Vorschau – so sieht deine Seite im Browser aus</span></div>
+        <div id="preview-frame-wrap">
+          <iframe id="preview-frame" sandbox="allow-same-origin allow-scripts"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="status">
+  <span class="sitem">Seite: <b id="stat-page">–</b></span>
+  <span class="sitem">Zeichen: <b id="stat-chars">0</b></span>
+  <span class="sitem">Wörter: <b id="stat-words">0</b></span>
+  <span class="sitem" id="stat-saved" style="color:var(--green);font-weight:800;"></span>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="link-modal">
+  <div class="modal">
+    <h2>🔗 Link einfügen</h2>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchLinkTab('ext')">🌐 Extern</button>
+      <button class="modal-tab"        onclick="switchLinkTab('int')">📄 Interne Seite</button>
+      <button class="modal-tab"        onclick="switchLinkTab('anc')">⚓ Anker-Sprung</button>
+    </div>
+    <div class="modal-section active" id="lt-ext">
+      <label>Linktext</label><input type="text" id="link-text-ext" placeholder="z.B. Klick hier">
+      <label>URL</label><input type="text" id="link-url-ext" placeholder="https://www.example.com">
+    </div>
+    <div class="modal-section" id="lt-int">
+      <div class="hint">Verlinkt auf eine andere Seite deines Projekts. Im Browser müssen alle HTML-Dateien im gleichen Ordner liegen.</div>
+      <label>Linktext</label><input type="text" id="link-text-int" placeholder="z.B. Zur Startseite">
+      <label>Ziel-Seite</label><select id="link-page-select"></select>
+      <label>Anker auf der Zielseite (optional)</label><select id="link-page-anchor-select"><option value="">– kein Anker –</option></select>
+    </div>
+    <div class="modal-section" id="lt-anc">
+      <div class="hint">Springt zu einem Anker (<code>⚓</code>) auf der <b>aktuellen Seite</b>.</div>
+      <label>Linktext</label><input type="text" id="link-text-anc" placeholder="z.B. Nach oben">
+      <label>Ziel-Anker</label><select id="link-anchor-select"><option value="">– kein Anker –</option></select>
+    </div>
+    <div class="modal-btns">
+      <button class="mbtn secondary" onclick="closeModal('link-modal')">Abbrechen</button>
+      <button class="mbtn primary"   onclick="confirmLink()">Einfügen</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="anchor-modal">
+  <div class="modal">
+    <h2>⚓ Anker setzen</h2>
+    <div class="hint">Ein Anker ist eine Sprungmarke. Links können direkt zu ihr springen. Im Editor erscheint ein orangenes Badge.</div>
+    <label>Anker-Name (Buchstaben, Zahlen, Bindestrich)</label>
+    <input type="text" id="anchor-name" placeholder="z.B. kapitel-1">
+    <div class="modal-btns">
+      <button class="mbtn secondary" onclick="closeModal('anchor-modal')">Abbrechen</button>
+      <button class="mbtn primary"   onclick="confirmAnchor()">Setzen</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="img-modal">
+  <div class="modal">
+    <h2>🖼 Bild einfügen</h2>
+    <p style="font-size:.82rem;color:var(--text2);margin-bottom:10px;">URL eingeben <em>oder</em> Datei vom Computer wählen.</p>
+    <label>Bild-URL</label><input type="text" id="img-url" placeholder="https://…/bild.jpg">
+    <input type="file" id="img-file" accept="image/*" style="margin-bottom:12px;font-size:.82rem;width:100%;">
+    <label>Alt-Text</label><input type="text" id="img-alt" placeholder="z.B. Mein Foto">
+    <div class="modal-btns">
+      <button class="mbtn secondary" onclick="closeModal('img-modal')">Abbrechen</button>
+      <button class="mbtn primary"   onclick="confirmImage()">Einfügen</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="table-modal">
+  <div class="modal">
+    <h2>⊞ Tabelle einfügen</h2>
+    <div style="display:flex;gap:14px;margin-bottom:14px;">
+      <div style="flex:1"><label>Zeilen</label><input type="number" id="tbl-rows" value="3" min="1" max="20"></div>
+      <div style="flex:1"><label>Spalten</label><input type="number" id="tbl-cols" value="3" min="1" max="10"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;margin-bottom:14px;">
+      <input type="checkbox" id="tbl-header" checked> Kopfzeile (th)
+    </label>
+    <div class="modal-btns">
+      <button class="mbtn secondary" onclick="closeModal('table-modal')">Abbrechen</button>
+      <button class="mbtn primary"   onclick="confirmTable()">Einfügen</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="page-modal">
+  <div class="modal">
+    <h2>📄 Neue Seite</h2>
+    <label>Seitenname</label><input type="text" id="page-name-input" placeholder="z.B. Über mich">
+    <div class="modal-btns">
+      <button class="mbtn secondary" onclick="closeModal('page-modal')">Abbrechen</button>
+      <button class="mbtn primary"   onclick="confirmAddPage()">Erstellen</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rename-modal">
+  <div class="modal">
+    <h2>✏️ Seite umbenennen</h2>
+    <label>Neuer Seitenname</label><input type="text" id="rename-input" placeholder="Neuer Name">
+    <div class="modal-btns">
+      <button class="mbtn secondary" onclick="closeModal('rename-modal')">Abbrechen</button>
+      <button class="mbtn primary"   onclick="confirmRenamePage()">Umbenennen</button>
+    </div>
+  </div>
+</div>
+
+<!-- DATEINAME MODAL (für Speichern & HTML-Download) -->
+<div class="modal-overlay" id="filename-modal">
+  <div class="modal">
+    <h2 id="filename-modal-title">💾 Dateiname eingeben</h2>
+    <div class="hint" id="filename-modal-hint"></div>
+    <label id="filename-modal-label">Dateiname</label>
+    <input type="text" id="filename-input" placeholder="z.B. max-mustermann">
+    <div style="font-size:.75rem;color:var(--text2);margin-top:-8px;margin-bottom:14px;" id="filename-preview"></div>
+    <div class="modal-btns">
+      <button class="mbtn secondary" onclick="closeModal('filename-modal')">Abbrechen</button>
+      <button class="mbtn primary"   onclick="confirmFilename()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- LINK EDIT MODAL (für bestehende Links) -->
+<div class="modal-overlay" id="link-edit-modal">
+  <div class="modal">
+    <h2>🔗 Link bearbeiten</h2>
+    <label>Linktext (sichtbarer Text)</label>
+    <input type="text" id="le-text" placeholder="z.B. Klick hier">
+    <label>Ziel-URL / Adresse</label>
+    <input type="text" id="le-href" placeholder="https://… oder #anker oder seite.html">
+    <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;margin-bottom:14px;">
+      <input type="checkbox" id="le-blank"> In neuem Tab öffnen (_blank)
+    </label>
+    <div style="background:var(--surface2);border-radius:8px;padding:8px 12px;font-size:.76rem;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+      💡 <b>Tipp:</b> Externe Links beginnen mit <code>https://</code> · Anker-Links mit <code>#name</code> · Interne Seiten z.B. <code>seite.html</code>
+    </div>
+    <div class="modal-btns">
+      <button class="mbtn secondary" style="margin-right:auto;background:rgba(247,37,133,.08);color:#f72585;border:1px solid rgba(247,37,133,.3);" onclick="removeCurrentLink()">🗑 Link entfernen</button>
+      <button class="mbtn secondary" onclick="closeModal('link-edit-modal')">Abbrechen</button>
+      <button class="mbtn primary"   onclick="confirmEditLink()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- LINK TOOLTIP (appears on hover/click over existing links) -->
+<div id="link-tooltip" style="
+  position:fixed; z-index:650; display:none;
+  background:#1e1e3a; color:#dde8ff; border-radius:9px;
+  padding:7px 12px; font-size:.78rem; font-family:'Nunito',sans-serif;
+  box-shadow:0 6px 24px rgba(0,0,0,.35); align-items:center; gap:10px;
+  border:1px solid rgba(255,255,255,.1); max-width:380px;
+">
+  <span id="lt-href-display" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85;font-family:'JetBrains Mono',monospace;font-size:.72rem;"></span>
+  <button onclick="openLinkEditor()" style="background:var(--accent);border:none;color:#fff;border-radius:6px;padding:3px 10px;font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap;">✏️ Bearbeiten</button>
+  <button onclick="openLinkInNewTab()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#dde8ff;border-radius:6px;padding:3px 8px;font-family:inherit;font-size:.76rem;cursor:pointer;white-space:nowrap;" title="Link öffnen">↗</button>
+  <button onclick="hideLinkTooltip()" style="background:none;border:none;color:#778;cursor:pointer;font-size:.9rem;padding:0 2px;">✕</button>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let pages=[{id:1,name:'Startseite',content:'<h1>Meine erste Webseite</h1><p>Hier kannst du deinen Text schreiben.</p>'}];
+let currentPageId=1, pageIdCounter=2, currentView='editor';
+let savedSel=null, renamingPageId=null, activeLinkTab='ext';
+let currentLinkEl=null; // the <a> element currently being edited/hovered
+
+// Image interaction state
+let selWrap=null;          // currently selected .img-wrap
+let dragState=null;        // {type:'drag'|'resize', handle, startX,startY, origW,origH, origLeft,origTop, origMouseX,origMouseY, aspect}
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+function init(){
+  try{ const b=sessionStorage.getItem('webeditor_backup'); if(b){const d=JSON.parse(b);if(d.pages?.length){pages=d.pages;currentPageId=d.currentPageId;pageIdCounter=d.pageIdCounter;}} }catch{}
+  renderPageList(); loadPageIntoEditor(currentPageId); updateStatus(); setupFormatBar();
+  setupGlobalDragEvents();
+}
+
+// ════════════════════════════════════════════════════════════
+//  PAGE MANAGEMENT
+// ════════════════════════════════════════════════════════════
+function renderPageList(){
+  const list=document.getElementById('page-list'); list.innerHTML='';
+  pages.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='page-item'+(p.id===currentPageId?' active':'');
+    div.innerHTML=`<span class="pi-name" title="${p.name}">📄 ${p.name}</span>
+      <button class="pi-icon-btn" title="Umbenennen" onclick="event.stopPropagation();openRenamePage(${p.id})">✏️</button>
+      <button class="pi-icon-btn" title="Löschen"    onclick="event.stopPropagation();deletePage(${p.id})">✕</button>`;
+    div.addEventListener('click',()=>switchPage(p.id));
+    list.appendChild(div);
+  });
+}
+function switchPage(id){saveCurrentPageContent();deselectImg();currentPageId=id;loadPageIntoEditor(id);renderPageList();syncViewAfterSwitch();}
+function loadPageIntoEditor(id){
+  const p=pages.find(x=>x.id===id); if(!p)return;
+  document.getElementById('editor-content').innerHTML=p.content;
+  document.getElementById('stat-page').textContent=p.name;
+  attachAllImgHandlers(); updateStatus();
+}
+function saveCurrentPageContent(){
+  const p=pages.find(x=>x.id===currentPageId);
+  if(p) p.content=getCleanContent();
+}
+function addPage(){document.getElementById('page-name-input').value='';openModal('page-modal');setTimeout(()=>document.getElementById('page-name-input').focus(),150);}
+function confirmAddPage(){
+  const name=document.getElementById('page-name-input').value.trim()||('Seite '+pageIdCounter);
+  saveCurrentPageContent();
+  const np={id:pageIdCounter++,name,content:`<h1>${name}</h1><p>Inhalt der Seite "${name}".</p>`};
+  pages.push(np);currentPageId=np.id;
+  renderPageList();loadPageIntoEditor(currentPageId);closeModal('page-modal');syncViewAfterSwitch();
+}
+function deletePage(id){
+  if(pages.length===1){alert('Du kannst die letzte Seite nicht löschen.');return;}
+  if(!confirm('Seite wirklich löschen?'))return;
+  pages=pages.filter(p=>p.id!==id);
+  if(currentPageId===id){currentPageId=pages[0].id;loadPageIntoEditor(currentPageId);}
+  renderPageList();
+}
+function openRenamePage(id){renamingPageId=id;const p=pages.find(x=>x.id===id);document.getElementById('rename-input').value=p?p.name:'';openModal('rename-modal');setTimeout(()=>document.getElementById('rename-input').focus(),150);}
+function confirmRenamePage(){
+  const n=document.getElementById('rename-input').value.trim();if(!n)return;
+  const p=pages.find(x=>x.id===renamingPageId);
+  if(p){p.name=n;if(renamingPageId===currentPageId)document.getElementById('stat-page').textContent=n;renderPageList();}
+  closeModal('rename-modal');renamingPageId=null;
+}
+function syncViewAfterSwitch(){
+  if(currentView==='code'||currentView==='split')syncEditorToCode();
+  if(currentView==='preview')updatePreview();
+}
+
+// ════════════════════════════════════════════════════════════
+//  IMAGE SYSTEM – Word-like
+// ════════════════════════════════════════════════════════════
+
+/** Create a .img-wrap element around an img */
+function makeImgWrap(src, alt, wPx, wrapMode){
+  const wrap=document.createElement('span');
+  wrap.className='img-wrap';
+  wrap.setAttribute('data-wrap', wrapMode||'inline');
+  wrap.setAttribute('contenteditable','false');
+  wrap.style.width = (wPx||240)+'px';
+  wrap.style.height = 'auto';
+
+  const img=document.createElement('img');
+  img.src=src; img.alt=alt||'';
+  img.draggable=false;
+  wrap.appendChild(img);
+
+  // Resize handles
+  ['nw','n','ne','e','se','s','sw','w'].forEach(dir=>{
+    const h=document.createElement('span');
+    h.className='rh '+dir;
+    h.setAttribute('data-dir',dir);
+    wrap.appendChild(h);
+  });
+
+  applyWrapStyle(wrap, wrapMode||'inline');
+  attachWrapHandlers(wrap);
+  return wrap;
+}
+
+function applyWrapStyle(wrap, mode){
+  wrap.setAttribute('data-wrap',mode);
+  wrap.className='img-wrap'+(selWrap===wrap?' selected':'');
+  switch(mode){
+    case 'left':   wrap.style.cssText+=';float:left;position:static;margin:4px 14px 6px 0;display:block;'; break;
+    case 'right':  wrap.style.cssText+=';float:right;position:static;margin:4px 0 6px 14px;display:block;'; break;
+    case 'behind': wrap.style.cssText+=';float:none;position:absolute;z-index:0;margin:0;display:block;'; break;
+    case 'front':  wrap.style.cssText+=';float:none;position:absolute;z-index:100;margin:0;display:block;'; break;
+    default:       wrap.style.cssText+=';float:none;position:relative;z-index:auto;margin:2px 4px;display:inline-block;'; break;
+  }
+  if(selWrap===wrap) wrap.classList.add('selected');
+}
+
+function attachWrapHandlers(wrap){
+  // Click to select
+  wrap.addEventListener('mousedown', e=>{
+    if(e.target.classList.contains('rh')){
+      e.preventDefault(); e.stopPropagation();
+      beginResize(e, wrap, e.target.getAttribute('data-dir'));
+      return;
+    }
+    if(e.button===0){
+      e.preventDefault();
+      selectImgWrap(wrap);
+      const mode=wrap.getAttribute('data-wrap');
+      if(mode==='behind'||mode==='front'||mode==='behind'||mode==='front'){
+        // begin drag for absolute positioned
+        beginDrag(e, wrap);
+      }
+    }
+  });
+}
+
+function attachAllImgHandlers(){
+  document.querySelectorAll('#editor-content .img-wrap').forEach(w=>attachWrapHandlers(w));
+}
+
+// ── SELECT / DESELECT ──────────────────────────────────────
+function selectImgWrap(wrap){
+  if(selWrap && selWrap!==wrap) selWrap.classList.remove('selected');
+  selWrap=wrap;
+  wrap.classList.add('selected');
+  showImgPanel(wrap);
+}
+function deselectImg(){
+  if(selWrap) selWrap.classList.remove('selected');
+  selWrap=null;
+  closeImgPanel();
+}
+
+// ── IMG PANEL ──────────────────────────────────────────────
+function showImgPanel(wrap){
+  const panel=document.getElementById('img-panel');
+  const img=wrap.querySelector('img');
+
+  // Size
+  const w=wrap.offsetWidth||parseInt(wrap.style.width)||200;
+  const h=img.offsetHeight||img.naturalHeight||0;
+  document.getElementById('ip-w').value=Math.round(w);
+  document.getElementById('ip-h').value=Math.round(h);
+
+  // Opacity
+  const op=img.style.opacity?Math.round(parseFloat(img.style.opacity)*100):100;
+  document.getElementById('ip-op').value=op;
+  document.getElementById('ip-op-val').textContent=op+'%';
+
+  // Border radius
+  const rad=img.style.borderRadius?parseInt(img.style.borderRadius)||0:4;
+  document.getElementById('ip-rad').value=Math.min(rad,50);
+  document.getElementById('ip-rad-val').textContent=rad+'px';
+
+  // Position (for absolute modes)
+  const mode=wrap.getAttribute('data-wrap');
+  const posRow=document.getElementById('ip-pos-row');
+  posRow.style.display=(mode==='behind'||mode==='front')?'flex':'none';
+  if(mode==='behind'||mode==='front'){
+    document.getElementById('ip-x').value=Math.round(parseFloat(wrap.style.left)||0);
+    document.getElementById('ip-y').value=Math.round(parseFloat(wrap.style.top)||0);
+  }
+
+  // Wrap buttons
+  ['inline','left','right','behind','front'].forEach(m=>{
+    document.getElementById('wb-'+m).classList.toggle('on',m===mode);
+  });
+
+  panel.classList.add('visible');
+  positionImgPanel(wrap);
+}
+
+function positionImgPanel(wrap){
+  if(!wrap) return;
+  const panel=document.getElementById('img-panel');
+  const ec=document.getElementById('editor-content');
+  const ecRect=ec.getBoundingClientRect();
+  const wRect=wrap.getBoundingClientRect();
+  let left=wRect.right+12;
+  if(left+270>window.innerWidth) left=wRect.left-274;
+  left=Math.max(4,left);
+  let top=Math.max(ecRect.top, Math.min(wRect.top, window.innerHeight-400));
+  panel.style.left=left+'px'; panel.style.top=top+'px';
+}
+
+function closeImgPanel(){
+  document.getElementById('img-panel').classList.remove('visible');
+}
+
+// ── APPLY SIZE FROM PANEL ──────────────────────────────────
+function applyImgSize(changed){
+  if(!selWrap) return;
+  const img=selWrap.querySelector('img');
+  const locked=document.getElementById('ip-lock').checked;
+  let w=parseInt(document.getElementById('ip-w').value)||100;
+  let h=parseInt(document.getElementById('ip-h').value)||100;
+  const nat=img.naturalWidth||1, natH=img.naturalHeight||1;
+  const asp=nat/natH;
+  if(locked){
+    if(changed==='h'){ w=Math.round(h*asp); document.getElementById('ip-w').value=w; }
+    else { h=Math.round(w/asp); document.getElementById('ip-h').value=h; }
+  }
+  selWrap.style.width=w+'px';
+  img.style.height=h+'px';
+  positionImgPanel(selWrap); debouncedCodeSync();
+}
+
+// ── APPLY POSITION FROM PANEL ──────────────────────────────
+function applyImgPos(){
+  if(!selWrap) return;
+  const x=parseInt(document.getElementById('ip-x').value)||0;
+  const y=parseInt(document.getElementById('ip-y').value)||0;
+  selWrap.style.left=x+'px'; selWrap.style.top=y+'px';
+  debouncedCodeSync();
+}
+
+// ── WRAP MODE ──────────────────────────────────────────────
+function applyWrap(mode){
+  if(!selWrap) return;
+  const oldMode=selWrap.getAttribute('data-wrap');
+  // if switching from absolute to non-absolute, clear position
+  if((oldMode==='behind'||oldMode==='front')&&(mode!=='behind'&&mode!=='front')){
+    selWrap.style.left=''; selWrap.style.top='';
+  }
+  // if switching to absolute, set initial position
+  if((mode==='behind'||mode==='front')&&(oldMode!=='behind'&&oldMode!=='front')){
+    const ec=document.getElementById('editor-content');
+    const wRect=selWrap.getBoundingClientRect();
+    const ecRect=ec.getBoundingClientRect();
+    selWrap.style.left=Math.round(wRect.left-ecRect.left+ec.scrollLeft)+'px';
+    selWrap.style.top=Math.round(wRect.top-ecRect.top+ec.scrollTop)+'px';
+  }
+  // reset float/position before applying new
+  selWrap.style.float=''; selWrap.style.position='';
+  applyWrapStyle(selWrap, mode);
+  showImgPanel(selWrap); debouncedCodeSync();
+}
+
+// ── OPACITY / RADIUS ──────────────────────────────────────
+function applyImgOpacity(val){
+  if(!selWrap) return;
+  selWrap.querySelector('img').style.opacity=(val/100).toFixed(2);
+  document.getElementById('ip-op-val').textContent=val+'%';
+  debouncedCodeSync();
+}
+function applyImgRadius(val){
+  if(!selWrap) return;
+  selWrap.querySelector('img').style.borderRadius=val+'px';
+  document.getElementById('ip-rad-val').textContent=val+'px';
+  debouncedCodeSync();
+}
+
+// ── DELETE ────────────────────────────────────────────────
+function deleteSelectedImg(){
+  if(!selWrap||!confirm('Bild wirklich löschen?')) return;
+  selWrap.remove(); deselectImg(); debouncedCodeSync();
+}
+
+// ════════════════════════════════════════════════════════════
+//  DRAG & RESIZE  (global mouse events)
+// ════════════════════════════════════════════════════════════
+function beginDrag(e, wrap){
+  const ec=document.getElementById('editor-content');
+  const ecRect=ec.getBoundingClientRect();
+  dragState={
+    type:'drag', wrap,
+    startMouseX:e.clientX, startMouseY:e.clientY,
+    startLeft:parseFloat(wrap.style.left)||0,
+    startTop:parseFloat(wrap.style.top)||0,
+    ecRect
+  };
+  document.getElementById('drag-overlay').classList.add('active');
+  document.getElementById('drag-overlay').style.cursor='grabbing';
+}
+
+function beginResize(e, wrap, dir){
+  const img=wrap.querySelector('img');
+  dragState={
+    type:'resize', wrap, dir,
+    startMouseX:e.clientX, startMouseY:e.clientY,
+    startW:wrap.offsetWidth,
+    startH:img.offsetHeight||img.naturalHeight||wrap.offsetWidth,
+    aspect:(img.naturalWidth||1)/(img.naturalHeight||1)
+  };
+  document.getElementById('drag-overlay').classList.add('active');
+  document.getElementById('drag-overlay').style.cursor=dir+'-resize';
+}
+
+function setupGlobalDragEvents(){
+  const overlay=document.getElementById('drag-overlay');
+
+  document.addEventListener('mousemove', e=>{
+    if(!dragState) return;
+    const dx=e.clientX-dragState.startMouseX;
+    const dy=e.clientY-dragState.startMouseY;
+
+    if(dragState.type==='drag'){
+      const wrap=dragState.wrap;
+      let nx=dragState.startLeft+dx;
+      let ny=dragState.startTop+dy;
+      wrap.style.left=nx+'px'; wrap.style.top=ny+'px';
+      document.getElementById('ip-x').value=Math.round(nx);
+      document.getElementById('ip-y').value=Math.round(ny);
+
+    } else if(dragState.type==='resize'){
+      const wrap=dragState.wrap, dir=dragState.dir;
+      const img=wrap.querySelector('img');
+      const locked=document.getElementById('ip-lock').checked;
+      let newW=dragState.startW, newH=dragState.startH;
+
+      if(dir.includes('e'))      newW=Math.max(40, dragState.startW+dx);
+      else if(dir.includes('w')) newW=Math.max(40, dragState.startW-dx);
+      if(dir.includes('s'))      newH=Math.max(30, dragState.startH+dy);
+      else if(dir.includes('n')) newH=Math.max(30, dragState.startH-dy);
+
+      if(locked){
+        if(dir==='n'||dir==='s') newW=Math.round(newH*dragState.aspect);
+        else                      newH=Math.round(newW/dragState.aspect);
+      }
+      wrap.style.width=newW+'px';
+      img.style.height=newH+'px';
+      document.getElementById('ip-w').value=Math.round(newW);
+      document.getElementById('ip-h').value=Math.round(newH);
+      positionImgPanel(wrap);
+    }
+  });
+
+  document.addEventListener('mouseup', ()=>{
+    if(!dragState) return;
+    dragState=null;
+    overlay.classList.remove('active');
+    overlay.style.cursor='';
+    debouncedCodeSync();
+  });
+
+  // Click on editor background → deselect img; click on link → show tooltip
+  document.getElementById('editor-content').addEventListener('mousedown', e=>{
+    if(e.target.closest('.img-wrap')) return;
+    deselectImg();
+    // Link click detection (with Ctrl or just click on <a>)
+    const link = e.target.closest('a[href]');
+    if(link && document.getElementById('editor-content').contains(link)){
+      e.preventDefault();
+      showLinkTooltip(link);
+    } else {
+      hideLinkTooltip();
+    }
+  });
+
+  // Keyboard: Delete selected image
+  document.addEventListener('keydown', e=>{
+    if((e.key==='Delete'||e.key==='Backspace') && selWrap && !e.target.closest('[contenteditable="true"]')){
+      deleteSelectedImg(); e.preventDefault();
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  LINK TOOLTIP & EDITOR
+// ════════════════════════════════════════════════════════════
+function showLinkTooltip(linkEl){
+  currentLinkEl = linkEl;
+  const tt = document.getElementById('link-tooltip');
+  const href = linkEl.getAttribute('href') || '';
+  document.getElementById('lt-href-display').textContent = href;
+  tt.style.display = 'flex';
+  // Position below the link
+  const r = linkEl.getBoundingClientRect();
+  let top = r.bottom + 8;
+  let left = Math.max(8, Math.min(r.left, window.innerWidth - 400));
+  if(top + 50 > window.innerHeight) top = r.top - 50;
+  tt.style.top = top + 'px';
+  tt.style.left = left + 'px';
+}
+
+function hideLinkTooltip(){
+  document.getElementById('link-tooltip').style.display = 'none';
+  currentLinkEl = null;
+}
+
+function openLinkInNewTab(){
+  if(!currentLinkEl) return;
+  const href = currentLinkEl.getAttribute('href') || '';
+  if(href.startsWith('http')) window.open(href, '_blank');
+  else alert('Dieser Link zeigt auf: ' + href + '\n(Kein externer Link – kann hier nicht geöffnet werden.)');
+}
+
+function openLinkEditor(){
+  if(!currentLinkEl) return;
+  const href = currentLinkEl.getAttribute('href') || '';
+  const text = currentLinkEl.innerText || '';
+  const blank = currentLinkEl.getAttribute('target') === '_blank';
+  document.getElementById('le-href').value = href;
+  document.getElementById('le-text').value = text;
+  document.getElementById('le-blank').checked = blank;
+  hideLinkTooltip();
+  openModal('link-edit-modal');
+  setTimeout(()=>document.getElementById('le-href').focus(), 150);
+}
+
+function confirmEditLink(){
+  if(!currentLinkEl) return;
+  const newHref = document.getElementById('le-href').value.trim();
+  const newText = document.getElementById('le-text').value.trim();
+  const newBlank = document.getElementById('le-blank').checked;
+  if(!newHref){ alert('Bitte eine URL oder einen Anker eingeben.'); return; }
+  currentLinkEl.setAttribute('href', newHref);
+  if(newBlank) currentLinkEl.setAttribute('target', '_blank');
+  else currentLinkEl.removeAttribute('target');
+  if(newText) currentLinkEl.innerText = newText;
+  closeModal('link-edit-modal');
+  currentLinkEl = null;
+  debouncedCodeSync(); saveCurrentPageContent();
+}
+
+function removeCurrentLink(){
+  if(!currentLinkEl || !confirm('Link wirklich entfernen? Der Text bleibt erhalten.')) return;
+  // Replace <a> with its text content
+  const parent = currentLinkEl.parentNode;
+  const text = document.createTextNode(currentLinkEl.innerText);
+  parent.replaceChild(text, currentLinkEl);
+  closeModal('link-edit-modal');
+  currentLinkEl = null;
+  debouncedCodeSync(); saveCurrentPageContent();
+}
+function setupFormatBar(){
+  const ec=document.getElementById('editor-content');
+  ec.addEventListener('keyup',   updateFormatBar);
+  ec.addEventListener('mouseup', updateFormatBar);
+  ec.addEventListener('focus',   updateFormatBar);
+}
+function updateFormatBar(){
+  try{
+    const sel=window.getSelection(); if(!sel.rangeCount) return;
+    const node=sel.getRangeAt(0).startContainer;
+    let el=node.nodeType===3?node.parentElement:node;
+    let block=el;
+    const BT=['H1','H2','H3','H4','P','BLOCKQUOTE','LI','PRE','DIV'];
+    while(block&&block.id!=='editor-content'&&!BT.includes(block.tagName)) block=block.parentElement;
+    const tagName=(block&&block.id!=='editor-content')?block.tagName.toLowerCase():'p';
+    document.getElementById('fi-tag').textContent='<'+tagName+'>';
+    const cs=window.getComputedStyle(el);
+    const font=cs.fontFamily?cs.fontFamily.split(',')[0].replace(/['"]/g,'').trim():'–';
+    document.getElementById('fi-font').textContent=font;
+    const pxSize=parseFloat(cs.fontSize)||16;
+    document.getElementById('fi-size').textContent=Math.round(pxSize)+'px';
+    const fmts=[];
+    if(document.queryCommandState('bold'))          fmts.push('Fett');
+    if(document.queryCommandState('italic'))        fmts.push('Kursiv');
+    if(document.queryCommandState('underline'))     fmts.push('Unterstr.');
+    if(document.queryCommandState('strikeThrough')) fmts.push('Durchgestr.');
+    document.getElementById('fi-fmt').textContent=fmts.length?fmts.join(' · '):'Normal';
+    document.getElementById('btn-bold').classList.toggle('tb-active',document.queryCommandState('bold'));
+    document.getElementById('btn-italic').classList.toggle('tb-active',document.queryCommandState('italic'));
+    document.getElementById('btn-underline').classList.toggle('tb-active',document.queryCommandState('underline'));
+    document.getElementById('btn-strike').classList.toggle('tb-active',document.queryCommandState('strikeThrough'));
+    document.getElementById('fi-color').style.background=cs.color;
+    const styleMap={h1:'h1',h2:'h2',h3:'h3',blockquote:'blockquote',pre:'pre',p:'p',div:'p'};
+    const ms=styleMap[tagName]||'';
+    const ss=document.getElementById('sel-style');
+    let ok=false; for(let o of ss.options) if(o.value===ms){ok=true;break;}
+    if(ok)ss.value=ms; else ss.value='';
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOOLBAR COMMANDS
+// ════════════════════════════════════════════════════════════
+function execCmd(cmd,val=null){document.getElementById('editor-content').focus();document.execCommand(cmd,false,val);updateStatus();updateFormatBar();debouncedCodeSync();}
+function applyStyle(val){if(!val)return;document.getElementById('editor-content').focus();document.execCommand('formatBlock',false,val);updateStatus();updateFormatBar();debouncedCodeSync();}
+function saveSelection(){const s=window.getSelection();if(s.rangeCount>0)savedSel=s.getRangeAt(0).cloneRange();}
+function restoreSelection(){if(!savedSel)return;const s=window.getSelection();s.removeAllRanges();s.addRange(savedSel);}
+function insertHR(){document.getElementById('editor-content').focus();document.execCommand('insertHTML',false,'<hr>');debouncedCodeSync();}
+
+// ════════════════════════════════════════════════════════════
+//  INSERT IMAGE
+// ════════════════════════════════════════════════════════════
+function insertImagePrompt(){saveSelection();document.getElementById('img-url').value='';document.getElementById('img-alt').value='';document.getElementById('img-file').value='';openModal('img-modal');}
+function confirmImage(){
+  const alt=document.getElementById('img-alt').value.trim();
+  const file=document.getElementById('img-file').files[0];
+  const url=document.getElementById('img-url').value.trim();
+  const ins=src=>{
+    restoreSelection();
+    const ec=document.getElementById('editor-content'); ec.focus();
+    const wrap=makeImgWrap(src,alt,280,'inline');
+    // Insert at cursor
+    const sel=window.getSelection();
+    if(sel.rangeCount){
+      const r=sel.getRangeAt(0); r.collapse(false); r.insertNode(wrap);
+      r.setStartAfter(wrap); r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+    } else {
+      ec.appendChild(wrap);
+    }
+    closeModal('img-modal'); debouncedCodeSync();
+    selectImgWrap(wrap);
+  };
+  if(file){const r=new FileReader();r.onload=e=>ins(e.target.result);r.readAsDataURL(file);}
+  else if(url) ins(url);
+  else alert('Bitte eine URL eingeben oder eine Datei auswählen.');
+}
+
+// ════════════════════════════════════════════════════════════
+//  LINK / ANCHOR / TABLE
+// ════════════════════════════════════════════════════════════
+function getAnchors(pageId){
+  const p=pages.find(x=>x.id===pageId); if(!p) return [];
+  const tmp=document.createElement('div'); tmp.innerHTML=p.content;
+  return Array.from(tmp.querySelectorAll('a[name]')).map(a=>a.getAttribute('name')).filter(Boolean);
+}
+
+function insertLink(){
+  saveSelection();
+  const selText=window.getSelection().toString();
+  document.getElementById('link-text-ext').value=selText;
+  document.getElementById('link-text-int').value=selText;
+  document.getElementById('link-text-anc').value=selText;
+  document.getElementById('link-url-ext').value='https://';
+  const pageSel=document.getElementById('link-page-select');
+  pageSel.innerHTML='';
+  pages.forEach(p=>{
+    if(p.id===currentPageId) return;
+    const opt=document.createElement('option'); opt.value=p.id; opt.textContent=p.name; pageSel.appendChild(opt);
+  });
+  if(!pageSel.options.length){const o=document.createElement('option');o.value='';o.textContent='– keine anderen Seiten –';pageSel.appendChild(o);}
+  updatePageAnchorSelect();
+  pageSel.onchange=updatePageAnchorSelect;
+  const ancSel=document.getElementById('link-anchor-select');
+  ancSel.innerHTML='';
+  const ancs=getAnchors(currentPageId);
+  if(!ancs.length) ancSel.innerHTML='<option value="">– noch kein Anker –</option>';
+  else ancs.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent='#'+a;ancSel.appendChild(o);});
+  switchLinkTab('ext'); openModal('link-modal');
+}
+function updatePageAnchorSelect(){
+  const ps=document.getElementById('link-page-select');
+  const as=document.getElementById('link-page-anchor-select');
+  as.innerHTML='<option value="">– kein Anker –</option>';
+  const pid=parseInt(ps.value); if(!pid)return;
+  getAnchors(pid).forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent='#'+a;as.appendChild(o);});
+}
+function switchLinkTab(tab){
+  activeLinkTab=tab;
+  document.querySelectorAll('.modal-tab').forEach((b,i)=>{b.classList.toggle('active',['ext','int','anc'][i]===tab);});
+  document.querySelectorAll('.modal-section').forEach((s,i)=>{s.classList.toggle('active',['lt-ext','lt-int','lt-anc'][i]===('lt-'+tab));});
+}
+function confirmLink(){
+  let href='',text='';
+  if(activeLinkTab==='ext'){text=document.getElementById('link-text-ext').value.trim();href=document.getElementById('link-url-ext').value.trim();if(!href){alert('Bitte eine URL eingeben.');return;}}
+  else if(activeLinkTab==='int'){const pid=parseInt(document.getElementById('link-page-select').value);if(!pid){alert('Bitte eine Zielseite wählen.');return;}const tp=pages.find(x=>x.id===pid);if(!tp)return;text=document.getElementById('link-text-int').value.trim()||tp.name;const fn=tp.name.replace(/[^a-z0-9äöüß_-]/gi,'_').toLowerCase()+'.html';const anc=document.getElementById('link-page-anchor-select').value;href=fn+(anc?'#'+anc:'');}
+  else{const a=document.getElementById('link-anchor-select').value;if(!a){alert('Bitte zuerst einen Anker setzen.');return;}text=document.getElementById('link-text-anc').value.trim()||('#'+a);href='#'+a;}
+  restoreSelection(); document.getElementById('editor-content').focus();
+  const target=activeLinkTab==='ext'?' target="_blank"':'';
+  document.execCommand('insertHTML',false,`<a href="${href}"${target}>${text}</a>`);
+  closeModal('link-modal'); debouncedCodeSync();
+}
+
+function insertAnchor(){saveSelection();document.getElementById('anchor-name').value='';openModal('anchor-modal');setTimeout(()=>document.getElementById('anchor-name').focus(),150);}
+function confirmAnchor(){
+  let name=document.getElementById('anchor-name').value.trim().replace(/[^a-z0-9_-]/gi,'-').toLowerCase();
+  if(!name){alert('Bitte einen gültigen Namen eingeben.');return;}
+  restoreSelection(); document.getElementById('editor-content').focus();
+  document.execCommand('insertHTML',false,`<a name="${name}" id="${name}"></a><span class="anchor-mark" contenteditable="false" title="Anker: #${name}">⚓ ${name}</span>`);
+  closeModal('anchor-modal'); debouncedCodeSync();
+}
+
+function insertTable(){openModal('table-modal');}
+function confirmTable(){
+  const rows=parseInt(document.getElementById('tbl-rows').value)||3,cols=parseInt(document.getElementById('tbl-cols').value)||3,hdr=document.getElementById('tbl-header').checked;
+  let html='<table border="1" style="border-collapse:collapse;width:100%">';
+  for(let r=0;r<rows;r++){html+='<tr>';for(let c=0;c<cols;c++){const t=(r===0&&hdr)?'th':'td';const s=(r===0&&hdr)?' style="background:#e8edf8;font-weight:700;padding:6px 10px;"':' style="padding:6px 10px;"';html+=`<${t}${s}>${(r===0&&hdr)?'Spalte '+(c+1):'&nbsp;'}</${t}>`;}html+='</tr>';}
+  html+='</table><p></p>';
+  restoreSelection(); document.getElementById('editor-content').focus();
+  document.execCommand('insertHTML',false,html); closeModal('table-modal'); debouncedCodeSync();
+}
+
+// ════════════════════════════════════════════════════════════
+//  VIEWS
+// ════════════════════════════════════════════════════════════
+function setView(v){
+  saveCurrentPageContent(); deselectImg(); currentView=v;
+  ['editor','split','code','preview'].forEach(id=>document.getElementById('tab-'+id)?.classList.remove('active'));
+  document.getElementById('tab-'+v)?.classList.add('active');
+  const sv=document.getElementById('split-view'),ep=document.getElementById('editor-pane'),cp=document.getElementById('code-pane'),pp=document.getElementById('preview-pane');
+  const tb=document.getElementById('toolbar'),fb=document.getElementById('format-bar');
+  sv.classList.remove('split-mode');ep.classList.remove('visible');cp.classList.remove('visible');pp.classList.remove('visible');
+  if(v==='editor'){ep.classList.add('visible');tb.style.display='';fb.style.display='';}
+  else if(v==='split'){sv.classList.add('split-mode');ep.classList.add('visible');cp.classList.add('visible');tb.style.display='';fb.style.display='';syncEditorToCode();}
+  else if(v==='code'){cp.classList.add('visible');tb.style.display='none';fb.style.display='none';syncEditorToCode();}
+  else if(v==='preview'){pp.classList.add('visible');tb.style.display='none';fb.style.display='none';updatePreview();}
+}
+
+// ════════════════════════════════════════════════════════════
+//  CODE SYNC
+// ════════════════════════════════════════════════════════════
+function getCleanContent(){
+  const clone=document.getElementById('editor-content').cloneNode(true);
+  // Remove selection handles and editor-only classes from img-wraps
+  clone.querySelectorAll('.img-wrap').forEach(w=>{
+    w.classList.remove('selected');
+    w.querySelectorAll('.rh').forEach(h=>h.remove());
+    w.removeAttribute('contenteditable');
+  });
+  clone.querySelectorAll('.anchor-mark').forEach(s=>s.removeAttribute('contenteditable'));
+  return clone.innerHTML;
+}
+
+function syncEditorToCode(){
+  const content=getCleanContent();
+  const page=pages.find(p=>p.id===currentPageId),title=page?page.name:'Meine Seite';
+  document.getElementById('code-editor').value=
+`<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; line-height: 1.7; color: #222; position: relative; }
+    .img-wrap { display: inline-block; position: relative; line-height: 0; vertical-align: bottom; }
+    .img-wrap.wrap-left  { float: left;  margin: 4px 14px 6px 0; display: block; }
+    .img-wrap.wrap-right { float: right; margin: 4px 0 6px 14px; display: block; }
+    .img-wrap.wrap-behind { position: absolute; z-index: 0; }
+    .img-wrap.wrap-front  { position: absolute; z-index: 100; }
+    .img-wrap img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+    .anchor-mark { display: none; }
+    table { border-collapse: collapse; width: 100%; }
+    table td, table th { border: 1px solid #ccc; padding: 6px 10px; }
+  </style>
+</head>
+<body>
+${content}
+</body>
+</html>`;
+}
+
+function syncCodeToEditor(){
+  const raw=document.getElementById('code-editor').value;
+  const m=raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  document.getElementById('editor-content').innerHTML=m?m[1].trim():raw;
+  attachAllImgHandlers();
+  saveCurrentPageContent(); showSaved('Code übernommen!'); updateStatus();
+}
+
+let codeDebounce=null;
+function debouncedCodeSync(){if(currentView==='split'){clearTimeout(codeDebounce);codeDebounce=setTimeout(syncEditorToCode,400);}}
+
+function updatePreview(pageId){
+  saveCurrentPageContent();
+  const pid = pageId || currentPageId;
+  const page = pages.find(p=>p.id===pid);
+  if(!page) return;
+
+  // Build a page-lookup by filename so internal links can be resolved
+  function filenameFor(p){ return p.name.replace(/[^a-z0-9äöüß_-]/gi,'_').toLowerCase()+'.html'; }
+
+  // Get clean HTML content for any page
+  function htmlFor(p){
+    // Strip editor-only artifacts from stored content
+    const tmp=document.createElement('div');
+    tmp.innerHTML=p.content;
+    tmp.querySelectorAll('.img-wrap').forEach(w=>{w.classList.remove('selected');w.querySelectorAll('.rh').forEach(h=>h.remove());w.removeAttribute('contenteditable');});
+    tmp.querySelectorAll('.anchor-mark').forEach(s=>s.removeAttribute('contenteditable'));
+    return tmp.innerHTML;
+  }
+
+  const sharedCSS=`
+    body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 20px;line-height:1.7;color:#222;position:relative;}
+    .img-wrap{display:inline-block;position:relative;line-height:0;vertical-align:bottom;}
+    .img-wrap.wrap-left{float:left;margin:4px 14px 6px 0;display:block;}
+    .img-wrap.wrap-right{float:right;margin:4px 0 6px 14px;display:block;}
+    .img-wrap.wrap-behind{position:absolute;z-index:0;}
+    .img-wrap.wrap-front{position:absolute;z-index:100;}
+    .img-wrap img{display:block;width:100%;height:100%;object-fit:cover;border-radius:4px;}
+    .anchor-mark{display:none;}
+    table{border-collapse:collapse;width:100%;}
+    table td,table th{border:1px solid #ccc;padding:6px 10px;}
+    /* Preview navigation bar */
+    #__preview-nav{position:fixed;top:0;left:0;right:0;background:#3a0ca3;color:#fff;padding:6px 16px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;gap:10px;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+    #__preview-nav strong{flex:1;}
+    #__preview-nav button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:12px;}
+    body{padding-top:44px;}
+  `;
+
+  // Build a JS lookup table of all pages by filename, embedded in the preview
+  const pageMap = {};
+  pages.forEach(p=>{ pageMap[filenameFor(p)] = htmlFor(p); });
+  const pageMapJSON = JSON.stringify(pageMap).replace(/<\/script>/gi,'<\\/script>');
+
+  const navBar = `<div id="__preview-nav">
+    <strong>👁 Vorschau: ${page.name}</strong>
+    ${pages.map(p=>`<button onclick="__loadPage('${filenameFor(p)}')" ${p.id===pid?'style="background:rgba(255,255,255,.45);color:#1a1a2e;"':''}>${p.name}</button>`).join('')}
+  </div>`;
+
+  const interceptScript = `
+  <script>
+  const __pages = ${pageMapJSON};
+  const __css = ${JSON.stringify(sharedCSS)};
+  function __loadPage(filename){
+    const hash = filename.includes('#') ? filename.split('#')[1] : '';
+    const file = filename.split('#')[0];
+    const content = __pages[file];
+    if(!content){ alert('Seite "'+file+'" nicht gefunden.\\n\\nHinweis: Im echten Browser funktioniert dieser Link, wenn alle HTML-Dateien im gleichen Ordner liegen.'); return; }
+    // Re-render with new content
+    const bodyEl = document.body;
+    // preserve nav
+    const nav = document.getElementById('__preview-nav').outerHTML;
+    bodyEl.innerHTML = nav + content;
+    // re-attach intercept
+    __attachIntercept();
+    if(hash){ setTimeout(()=>{ const t=document.getElementById(hash)||document.querySelector('[name="'+hash+'"]'); if(t)t.scrollIntoView({behavior:'smooth'}); },150); }
+  }
+  function __attachIntercept(){
+    document.querySelectorAll('a[href]').forEach(a=>{
+      a.addEventListener('click', function(e){
+        const href = this.getAttribute('href')||'';
+        // External link → open in real browser tab
+        if(href.startsWith('http://') || href.startsWith('https://')){
+          e.preventDefault();
+          window.open(href,'_blank');
+          return;
+        }
+        // Anchor on same page
+        if(href.startsWith('#')){
+          e.preventDefault();
+          const id=href.slice(1);
+          const t=document.getElementById(id)||document.querySelector('[name="'+id+'"]');
+          if(t) t.scrollIntoView({behavior:'smooth'});
+          return;
+        }
+        // Internal page link
+        if(href.endsWith('.html') || __pages[href] || __pages[href.split('#')[0]]){
+          e.preventDefault();
+          __loadPage(href);
+          return;
+        }
+        // Anything else → open externally
+        e.preventDefault();
+        window.open(href,'_blank');
+      });
+    });
+  }
+  document.addEventListener('DOMContentLoaded', __attachIntercept);
+  // Also run immediately in case DOM is already ready
+  __attachIntercept();
+  <\/script>`;
+
+  const fullHTML = `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${page.name}</title>
+  <style>${sharedCSS}</style>
+</head>
+<body>
+${navBar}
+${htmlFor(page)}
+${interceptScript}
+</body>
+</html>`;
+
+  document.getElementById('preview-frame').srcdoc = fullHTML;
+}
+
+// ════════════════════════════════════════════════════════════
+//  SAVE / LOAD  –  mit Versionierung & Migration
+// ════════════════════════════════════════════════════════════
+const EDITOR_VERSION = 2; // ← hier hochzählen bei strukturellen Änderungen
+
+function saveProject(){
+  saveCurrentPageContent();
+  askFilename({
+    title:   '💾 Projekt speichern',
+    hint:    'Alle Seiten werden in einer JSON-Datei gespeichert. Diese Datei kannst du später wieder in den Editor laden.',
+    label:   'Dateiname (ohne Endung)',
+    suffix:  '.json',
+    default: 'webeditor-projekt',
+    onConfirm: name => {
+      const payload={version:EDITOR_VERSION,savedAt:new Date().toISOString(),currentPageId,pageIdCounter,pages};
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name+'.json';a.click();
+      showSaved('Gespeichert: '+name+'.json');
+    }
+  });
+}
+
+function downloadCurrentHTML(){
+  saveCurrentPageContent();syncEditorToCode();
+  const page=pages.find(p=>p.id===currentPageId);
+  const defaultName=(page?page.name:'seite').replace(/[^a-z0-9äöüß_-]/gi,'_').toLowerCase();
+  askFilename({
+    title:   '⬇️ HTML herunterladen',
+    hint:    'Nur die aktuelle Seite „'+(page?page.name:'?')+'" wird als HTML-Datei gespeichert.',
+    label:   'Dateiname (ohne .html)',
+    suffix:  '.html',
+    default: defaultName,
+    onConfirm: name => {
+      const blob=new Blob([document.getElementById('code-editor').value],{type:'text/html'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name+'.html';a.click();
+      showSaved('Heruntergeladen: '+name+'.html');
+    }
+  });
+}
+
+function loadProjectClick(){document.getElementById('load-input').click();}
+
+function loadProject(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      const fileVersion = d.version || 1; // Dateien ohne version-Feld sind Version 1
+
+      // ── MIGRATION ──────────────────────────────────────────
+      // Von Version 1 → 2: Bilder wurden von <img>-Tags auf
+      // <span class="img-wrap">…</span> umgestellt.
+      // Migration: einfache <img>-Tags werden in img-wrap gehüllt.
+      if(fileVersion < 2){
+        d.pages = d.pages.map(p=>{
+          const tmp=document.createElement('div');
+          tmp.innerHTML=p.content;
+          tmp.querySelectorAll('img:not(.img-wrap img)').forEach(img=>{
+            // Nur Bilder wrappen, die noch kein img-wrap-Elternteil haben
+            if(!img.closest('.img-wrap')){
+              const wrap=document.createElement('span');
+              wrap.className='img-wrap';
+              wrap.setAttribute('data-wrap','inline');
+              wrap.setAttribute('contenteditable','false');
+              const wPx = img.style.width
+                ? parseInt(img.style.width)
+                : (img.width || 240);
+              wrap.style.width=(isNaN(wPx)||wPx<20?240:wPx)+'px';
+              img.style.width=''; img.style.maxWidth='';
+              img.style.display='block';
+              img.draggable=false;
+              img.parentNode.insertBefore(wrap,img);
+              wrap.appendChild(img);
+              // 8 resize handles
+              ['nw','n','ne','e','se','s','sw','w'].forEach(dir=>{
+                const h=document.createElement('span');
+                h.className='rh '+dir;
+                h.setAttribute('data-dir',dir);
+                wrap.appendChild(h);
+              });
+            }
+          });
+          return {...p, content: tmp.innerHTML};
+        });
+        console.info(`WebEditor: Projekt migriert von v${fileVersion} → v${EDITOR_VERSION}`);
+      }
+      // Zukünftige Migrationen hier ergänzen:
+      // if(fileVersion < 3){ … }
+
+      // ── LADEN ──────────────────────────────────────────────
+      pages=d.pages;
+      currentPageId=d.currentPageId;
+      pageIdCounter=d.pageIdCounter||(pages.length+1);
+      renderPageList(); loadPageIntoEditor(currentPageId);
+
+      const migriert = fileVersion < EDITOR_VERSION ? ` (migriert von v${fileVersion})` : '';
+      showSaved('Projekt geladen'+migriert+'!');
+
+    }catch(err){
+      alert('Fehler beim Laden der Datei.\n\nDetails: '+err.message);
+    }
+  };
+  r.readAsText(file); e.target.value='';
+}
+
+// ════════════════════════════════════════════════════════════
+//  FILENAME DIALOG
+// ════════════════════════════════════════════════════════════
+let _filenameCallback = null;
+let _filenameSuffix   = '.json';
+
+function askFilename({title, hint, label, suffix, default: def, onConfirm}){
+  _filenameCallback = onConfirm;
+  _filenameSuffix   = suffix;
+  document.getElementById('filename-modal-title').textContent = title;
+  document.getElementById('filename-modal-hint').textContent  = hint;
+  document.getElementById('filename-modal-label').textContent = label;
+  const input = document.getElementById('filename-input');
+  input.value = def || '';
+  updateFilenamePreview();
+  openModal('filename-modal');
+  setTimeout(()=>{ input.focus(); input.select(); }, 150);
+}
+
+function updateFilenamePreview(){
+  const raw   = document.getElementById('filename-input').value.trim();
+  const clean = sanitizeFilename(raw);
+  const prev  = document.getElementById('filename-preview');
+  if(!raw){ prev.textContent=''; return; }
+  prev.textContent = clean !== raw
+    ? '→ Dateiname wird: ' + clean + _filenameSuffix
+    : '→ ' + clean + _filenameSuffix;
+  prev.style.color = clean ? 'var(--accent2)' : '#f72585';
+}
+
+function sanitizeFilename(name){
+  return name
+    .trim()
+    .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue')
+    .replace(/Ä/g,'Ae').replace(/Ö/g,'Oe').replace(/Ü/g,'Ue')
+    .replace(/ß/g,'ss')
+    .replace(/\s+/g,'-')
+    .replace(/[^a-z0-9._-]/gi,'_')
+    .replace(/^[-_.]+/,'')   // no leading dots/dashes
+    .toLowerCase()
+    || 'datei';
+}
+
+function confirmFilename(){
+  const raw   = document.getElementById('filename-input').value.trim();
+  const clean = sanitizeFilename(raw);
+  if(!clean){ alert('Bitte einen gültigen Dateinamen eingeben.'); return; }
+  closeModal('filename-modal');
+  if(_filenameCallback) _filenameCallback(clean);
+  _filenameCallback = null;
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODALS / STATUS
+// ════════════════════════════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));deselectImg();hideLinkTooltip();}
+  if(e.key==='Enter'&&document.getElementById('page-modal').classList.contains('open')) confirmAddPage();
+  if(e.key==='Enter'&&document.getElementById('rename-modal').classList.contains('open')) confirmRenamePage();
+  if(e.key==='Enter'&&document.getElementById('anchor-modal').classList.contains('open')) confirmAnchor();
+  if(e.key==='Enter'&&document.getElementById('link-edit-modal').classList.contains('open')) confirmEditLink();
+  if(e.key==='Enter'&&document.getElementById('filename-modal').classList.contains('open')) confirmFilename();
+});
+document.getElementById('filename-input').addEventListener('input', updateFilenamePreview);
+function updateStatus(){const t=document.getElementById('editor-content').innerText||'';document.getElementById('stat-chars').textContent=t.length;document.getElementById('stat-words').textContent=t.trim()?t.trim().split(/\s+/).length:0;}
+function showSaved(msg){const el=document.getElementById('stat-saved');el.textContent='✓ '+msg;clearTimeout(el._t);el._t=setTimeout(()=>el.textContent='',2500);}
+
+document.getElementById('editor-content').addEventListener('input',()=>{updateStatus();debouncedCodeSync();});
+document.getElementById('editor-content').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;');}});
+
+setInterval(()=>{saveCurrentPageContent();try{sessionStorage.setItem('webeditor_backup',JSON.stringify({version:EDITOR_VERSION,pages,currentPageId,pageIdCounter}));}catch{}},10000);
+
+init();
+</script>
+</body>
+</html>
