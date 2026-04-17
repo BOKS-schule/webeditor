@@ -251,10 +251,31 @@
     <button class="tb-btn" id="btn-underline" onclick="execCmd('underline')"><u>U</u></button>
     <button class="tb-btn" id="btn-strike"    onclick="execCmd('strikeThrough')"><s>S</s></button>
     <div class="tb-sep"></div>
+    <!-- Text color: click colored button to apply, small arrow opens picker -->
     <span class="tb-label">Textfarbe</span>
-    <input type="color" class="tb-color" id="col-fore" value="#1a1a2e" onchange="execCmd('foreColor',this.value)">
-    <span class="tb-label">Hintergrund</span>
-    <input type="color" class="tb-color" id="col-bg"   value="#ffffff" onchange="execCmd('hiliteColor',this.value)">
+    <div style="display:flex;align-items:center;gap:0;flex-shrink:0;">
+      <button class="tb-btn" id="btn-fore-apply" title="Textfarbe anwenden (zuletzt gewählte Farbe)"
+        onclick="applyForeColor()"
+        style="padding:4px 8px;border-right:none;border-radius:6px 0 0 6px;display:flex;align-items:center;gap:5px;">
+        <span style="font-size:.82rem;font-weight:700;">A</span>
+        <span id="fore-swatch" style="display:inline-block;width:18px;height:5px;border-radius:2px;background:#1a1a2e;"></span>
+      </button>
+      <input type="color" id="col-fore" value="#1a1a2e" title="Andere Farbe wählen"
+        style="width:22px;height:28px;border:1px solid var(--border);border-left:none;border-radius:0 6px 6px 0;cursor:pointer;padding:1px 2px;flex-shrink:0;"
+        oninput="updateForeColor(this.value)" onchange="updateForeColor(this.value)">
+    </div>
+    <span class="tb-label">Markierung</span>
+    <div style="display:flex;align-items:center;gap:0;flex-shrink:0;">
+      <button class="tb-btn" id="btn-bg-apply" title="Hintergrundfarbe anwenden"
+        onclick="applyBgColor()"
+        style="padding:4px 8px;border-right:none;border-radius:6px 0 0 6px;display:flex;align-items:center;gap:5px;">
+        <span style="font-size:.82rem;font-weight:700;">ab</span>
+        <span id="bg-swatch" style="display:inline-block;width:18px;height:5px;border-radius:2px;background:#ffffff;border:1px solid #ddd;"></span>
+      </button>
+      <input type="color" id="col-bg" value="#ffff00" title="Andere Markierfarbe wählen"
+        style="width:22px;height:28px;border:1px solid var(--border);border-left:none;border-radius:0 6px 6px 0;cursor:pointer;padding:1px 2px;flex-shrink:0;"
+        oninput="updateBgColor(this.value)" onchange="updateBgColor(this.value)">
+    </div>
     <div class="tb-sep"></div>
     <button class="tb-btn" onclick="execCmd('justifyLeft')">⬅</button>
     <button class="tb-btn" onclick="execCmd('justifyCenter')">⬌</button>
@@ -367,8 +388,8 @@
   <div id="panels">
     <div id="view-tabs">
       <button class="vtab active" onclick="setView('editor')"  id="tab-editor">✏️ Editor</button>
-      <button class="vtab"        onclick="setView('split')"   id="tab-split">⬛ Geteilt</button>
-      <button class="vtab"        onclick="setView('code')"    id="tab-code">💻 HTML</button>
+      <button class="vtab"        onclick="setView('split')"   id="tab-split">⬛ Geteilte Ansicht</button>
+      <button class="vtab"        onclick="setView('code')"    id="tab-code">💻 HTML-Code</button>
       <button class="vtab"        onclick="setView('preview')" id="tab-preview">👁 Vorschau</button>
     </div>
     <div id="split-view">
@@ -448,10 +469,46 @@
 <div class="modal-overlay" id="img-modal">
   <div class="modal">
     <h2>🖼 Bild einfügen</h2>
-    <p style="font-size:.82rem;color:var(--text2);margin-bottom:10px;">URL eingeben <em>oder</em> Datei vom Computer wählen.</p>
-    <label>Bild-URL</label><input type="text" id="img-url" placeholder="https://…/bild.jpg">
-    <input type="file" id="img-file" accept="image/*" style="margin-bottom:12px;font-size:.82rem;width:100%;">
-    <label>Alt-Text</label><input type="text" id="img-alt" placeholder="z.B. Mein Foto">
+
+    <!-- Tab buttons -->
+    <div class="modal-tabs" style="margin-bottom:12px;">
+      <button class="modal-tab active" id="img-tab-url-btn" onclick="switchImgTab('url')">🌐 URL eingeben</button>
+      <button class="modal-tab"        id="img-tab-file-btn" onclick="switchImgTab('file')">💾 Datei vom Computer</button>
+    </div>
+
+    <!-- URL Tab -->
+    <div id="img-tab-url">
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.6;">
+        💡 <b>So findest du eine funktionierende Bild-URL auf Wikipedia:</b><br>
+        1. Klicke auf ein Bild im Artikel → Bildbeschreibungsseite öffnet sich<br>
+        2. Klicke dort <b>nochmal</b> auf das Bild (große Version)<br>
+        3. Kopiere die URL aus der <b>Adressleiste</b> des Browsers (endet auf .jpg oder .png)
+      </div>
+      <label>Bild-URL einfügen</label>
+      <input type="text" id="img-url" placeholder="https://upload.wikimedia.org/…/bild.jpg"
+        oninput="previewImgUrl()" style="margin-bottom:8px;">
+      <!-- Live preview -->
+      <div id="img-url-preview" style="display:none;margin-bottom:12px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;min-height:80px;position:relative;">
+        <img id="img-url-preview-img" src="" alt="" style="max-width:100%;max-height:160px;border-radius:6px;"
+          onload="imgUrlOk()" onerror="imgUrlErr()">
+        <div id="img-url-status" style="font-size:.78rem;margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <!-- File Tab -->
+    <div id="img-tab-file" style="display:none;">
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.6;">
+        💡 Wähle ein Bild von deinem Computer. Es wird direkt in die Seite eingebettet – funktioniert auch ohne Internet!
+      </div>
+      <label>Bilddatei auswählen</label>
+      <input type="file" id="img-file" accept="image/*" style="margin-bottom:12px;font-size:.82rem;width:100%;" onchange="previewImgFile()">
+      <div id="img-file-preview" style="display:none;margin-bottom:12px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;">
+        <img id="img-file-preview-img" src="" alt="" style="max-width:100%;max-height:160px;border-radius:6px;">
+      </div>
+    </div>
+
+    <label>Alt-Text (Bildbeschreibung – für Barrierefreiheit)</label>
+    <input type="text" id="img-alt" placeholder="z.B. Foto eines Hundes">
     <div class="modal-btns">
       <button class="mbtn secondary" onclick="closeModal('img-modal')">Abbrechen</button>
       <button class="mbtn primary"   onclick="confirmImage()">Einfügen</button>
@@ -1049,27 +1106,121 @@ function insertHR(){document.getElementById('editor-content').focus();document.e
 // ════════════════════════════════════════════════════════════
 //  INSERT IMAGE
 // ════════════════════════════════════════════════════════════
-function insertImagePrompt(){saveSelection();document.getElementById('img-url').value='';document.getElementById('img-alt').value='';document.getElementById('img-file').value='';openModal('img-modal');}
+// ── COLOR: apply stored color / update swatch ──────────────────
+let _foreColor = '#1a1a2e';
+let _bgColor   = '#ffff00';
+
+function updateForeColor(val){
+  _foreColor = val;
+  document.getElementById('fore-swatch').style.background = val;
+  // Also apply immediately if text is selected
+  const sel = window.getSelection();
+  if(sel && sel.toString().length > 0){
+    execCmd('foreColor', val);
+  }
+}
+function applyForeColor(){
+  document.getElementById('editor-content').focus();
+  execCmd('foreColor', _foreColor);
+}
+function updateBgColor(val){
+  _bgColor = val;
+  document.getElementById('bg-swatch').style.background = val;
+  document.getElementById('bg-swatch').style.border = val.toLowerCase()==='#ffffff'?'1px solid #ddd':'none';
+  const sel = window.getSelection();
+  if(sel && sel.toString().length > 0){
+    execCmd('hiliteColor', val);
+  }
+}
+function applyBgColor(){
+  document.getElementById('editor-content').focus();
+  execCmd('hiliteColor', _bgColor);
+}
+
+// ── IMAGE MODAL ────────────────────────────────────────────────
+let _imgTab = 'url';
+function switchImgTab(tab){
+  _imgTab = tab;
+  document.getElementById('img-tab-url').style.display  = tab==='url'  ? '' : 'none';
+  document.getElementById('img-tab-file').style.display = tab==='file' ? '' : 'none';
+  document.getElementById('img-tab-url-btn').classList.toggle('active',  tab==='url');
+  document.getElementById('img-tab-file-btn').classList.toggle('active', tab==='file');
+}
+
+let _imgUrlTimer = null;
+function previewImgUrl(){
+  const url = document.getElementById('img-url').value.trim();
+  const prev = document.getElementById('img-url-preview');
+  const img  = document.getElementById('img-url-preview-img');
+  const status = document.getElementById('img-url-status');
+  if(!url){ prev.style.display='none'; return; }
+  prev.style.display='block';
+  status.textContent='⏳ Lade Vorschau…';
+  status.style.color='var(--text2)';
+  img.style.display='none';
+  clearTimeout(_imgUrlTimer);
+  _imgUrlTimer = setTimeout(()=>{
+    img.src = url;
+    img.style.display='block';
+  }, 600);
+}
+function imgUrlOk(){
+  const status = document.getElementById('img-url-status');
+  status.textContent = '✅ Bild gefunden – sieht gut aus!';
+  status.style.color = '#1e6b3c';
+}
+function imgUrlErr(){
+  const status = document.getElementById('img-url-status');
+  status.textContent = '❌ Bild konnte nicht geladen werden. Tipp: Klicke auf Wikipedia auf die große Bildversion und kopiere die URL aus der Adressleiste.';
+  status.style.color = '#c0392b';
+  document.getElementById('img-url-preview-img').style.display='none';
+}
+function previewImgFile(){
+  const file = document.getElementById('img-file').files[0];
+  const prev = document.getElementById('img-file-preview');
+  const img  = document.getElementById('img-file-preview-img');
+  if(!file){ prev.style.display='none'; return; }
+  const r = new FileReader();
+  r.onload = e => { img.src=e.target.result; prev.style.display='block'; };
+  r.readAsDataURL(file);
+}
+
+function insertImagePrompt(){
+  saveSelection();
+  document.getElementById('img-url').value='';
+  document.getElementById('img-alt').value='';
+  document.getElementById('img-file').value='';
+  document.getElementById('img-url-preview').style.display='none';
+  document.getElementById('img-file-preview').style.display='none';
+  switchImgTab('url');
+  openModal('img-modal');
+}
 function confirmImage(){
-  const alt=document.getElementById('img-alt').value.trim();
-  const file=document.getElementById('img-file').files[0];
-  const url=document.getElementById('img-url').value.trim();
-  const ins=src=>{
+  const alt  = document.getElementById('img-alt').value.trim();
+  const file = document.getElementById('img-file').files[0];
+  const url  = document.getElementById('img-url').value.trim();
+  // Check URL tab: only use URL if preview loaded OK
+  if(_imgTab==='url' && url){
+    const previewImg = document.getElementById('img-url-preview-img');
+    if(previewImg.naturalWidth===0 && previewImg.src){
+      if(!confirm('Das Bild konnte nicht als Vorschau geladen werden. Trotzdem einfügen?\n\n(Bei manchen Seiten funktioniert die Vorschau nicht, obwohl das Bild später korrekt angezeigt wird.)')){
+        return;
+      }
+    }
+  }
+  const ins = src => {
     restoreSelection();
     const ec=document.getElementById('editor-content'); ec.focus();
     const wrap=makeImgWrap(src,alt,280,'inline');
-    // Insert at cursor
     const sel=window.getSelection();
     if(sel.rangeCount){
       const r=sel.getRangeAt(0); r.collapse(false); r.insertNode(wrap);
       r.setStartAfter(wrap); r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
-    } else {
-      ec.appendChild(wrap);
-    }
+    } else { ec.appendChild(wrap); }
     closeModal('img-modal'); debouncedCodeSync();
     selectImgWrap(wrap);
   };
-  if(file){const r=new FileReader();r.onload=e=>ins(e.target.result);r.readAsDataURL(file);}
+  if(file){ const r=new FileReader(); r.onload=e=>ins(e.target.result); r.readAsDataURL(file); }
   else if(url) ins(url);
   else alert('Bitte eine URL eingeben oder eine Datei auswählen.');
 }
