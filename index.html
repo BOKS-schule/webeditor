@@ -241,9 +241,24 @@
       <option value="'Courier New'">Courier New</option><option value="'Times New Roman'">Times New Roman</option>
       <option value="Verdana">Verdana</option><option value="'Comic Sans MS'">Comic Sans</option>
     </select>
-    <select class="tb-select" id="sel-size" onchange="execCmd('fontSize',this.value);">
-      <option value="1">Klein</option><option value="2">Kleiner</option><option value="3" selected>Normal</option>
-      <option value="4">Mittel</option><option value="5">Groß</option><option value="6">Größer</option><option value="7">Riesig</option>
+    <select class="tb-select" id="sel-size" title="Schriftgröße"
+      onchange="applyFontSizePt(this.value);this.value='';">
+      <option value="">Größe…</option>
+      <option value="8">8 pt</option>
+      <option value="9">9 pt</option>
+      <option value="10">10 pt</option>
+      <option value="11">11 pt</option>
+      <option value="12">12 pt (Normal)</option>
+      <option value="14">14 pt</option>
+      <option value="16">16 pt</option>
+      <option value="18">18 pt</option>
+      <option value="20">20 pt</option>
+      <option value="24">24 pt</option>
+      <option value="28">28 pt</option>
+      <option value="32">32 pt</option>
+      <option value="36">36 pt</option>
+      <option value="48">48 pt</option>
+      <option value="72">72 pt</option>
     </select>
     <div class="tb-sep"></div>
     <button class="tb-btn" id="btn-bold"      onclick="execCmd('bold')"><b>B</b></button>
@@ -1074,7 +1089,13 @@ function updateFormatBar(){
     const font=cs.fontFamily?cs.fontFamily.split(',')[0].replace(/['"]/g,'').trim():'–';
     document.getElementById('fi-font').textContent=font;
     const pxSize=parseFloat(cs.fontSize)||16;
-    document.getElementById('fi-size').textContent=Math.round(pxSize)+'px';
+    const ptSize=Math.round(pxSize*0.75);
+    document.getElementById('fi-size').textContent=ptSize+'pt';
+    // Try to reflect current size in the dropdown
+    const sizeSel=document.getElementById('sel-size');
+    let matched=false;
+    for(let o of sizeSel.options){ if(parseInt(o.value)===ptSize){sizeSel.value=o.value;matched=true;break;} }
+    if(!matched) sizeSel.value='';
     const fmts=[];
     if(document.queryCommandState('bold'))          fmts.push('Fett');
     if(document.queryCommandState('italic'))        fmts.push('Kursiv');
@@ -1098,6 +1119,26 @@ function updateFormatBar(){
 //  TOOLBAR COMMANDS
 // ════════════════════════════════════════════════════════════
 function execCmd(cmd,val=null){document.getElementById('editor-content').focus();document.execCommand(cmd,false,val);updateStatus();updateFormatBar();debouncedCodeSync();}
+
+// Apply an exact pt font size using inline style (execCommand fontSize only supports 1-7)
+function applyFontSizePt(ptVal){
+  const pt=parseInt(ptVal);
+  if(!pt||pt<6||pt>120) return;
+  const ec=document.getElementById('editor-content');
+  ec.focus();
+  const sel=window.getSelection();
+  if(!sel||sel.rangeCount===0) return;
+  if(sel.isCollapsed){
+    // No selection: insert a zero-width span so next typed text inherits the size
+    document.execCommand('insertHTML',false,
+      `<span style="font-size:${pt}pt;">\u200B</span>`);
+  } else {
+    document.execCommand('insertHTML',false,
+      `<span style="font-size:${pt}pt;">${sel.toString()}</span>`);
+  }
+  updateFormatBar();
+  debouncedCodeSync();
+}
 function applyStyle(val){if(!val)return;document.getElementById('editor-content').focus();document.execCommand('formatBlock',false,val);updateStatus();updateFormatBar();debouncedCodeSync();}
 function saveSelection(){const s=window.getSelection();if(s.rangeCount>0)savedSel=s.getRangeAt(0).cloneRange();}
 function restoreSelection(){if(!savedSel)return;const s=window.getSelection();s.removeAllRanges();s.addRange(savedSel);}
