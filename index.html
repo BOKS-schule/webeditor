@@ -487,23 +487,24 @@
 
     <!-- Tab buttons -->
     <div class="modal-tabs" style="margin-bottom:12px;">
-      <button class="modal-tab active" id="img-tab-url-btn" onclick="switchImgTab('url')">🌐 URL eingeben</button>
+      <button class="modal-tab active" id="img-tab-url-btn"  onclick="switchImgTab('url')">🌐 Bild-URL</button>
       <button class="modal-tab"        id="img-tab-file-btn" onclick="switchImgTab('file')">💾 Datei vom Computer</button>
+      <button class="modal-tab"        id="img-tab-paste-btn" onclick="switchImgTab('paste')">📋 Einfügen</button>
     </div>
 
     <!-- URL Tab -->
     <div id="img-tab-url">
-      <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.6;">
-        💡 <b>So findest du eine funktionierende Bild-URL auf Wikipedia:</b><br>
-        1. Klicke auf ein Bild im Artikel → Bildbeschreibungsseite öffnet sich<br>
-        2. Klicke dort <b>nochmal</b> auf das Bild (große Version)<br>
-        3. Kopiere die URL aus der <b>Adressleiste</b> des Browsers (endet auf .jpg oder .png)
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.7;">
+        💡 <b>So findest du eine Bild-URL:</b><br>
+        Klicke im Internet mit der <b>rechten Maustaste</b> auf ein Bild →
+        „Bildadresse kopieren" (oder „Bild in neuem Tab öffnen" → URL kopieren).<br>
+        Geeignete Quellen für freie Bilder:
+        <b>Wikipedia</b> (commons.wikimedia.org) · <b>Pixabay</b> (pixabay.com) · <b>Unsplash</b> (unsplash.com)
       </div>
-      <label>Bild-URL einfügen</label>
-      <input type="text" id="img-url" placeholder="https://upload.wikimedia.org/…/bild.jpg"
+      <label>Bild-URL eingeben oder einfügen</label>
+      <input type="text" id="img-url" placeholder="https://…/bild.jpg oder bild.png"
         oninput="previewImgUrl()" style="margin-bottom:8px;">
-      <!-- Live preview -->
-      <div id="img-url-preview" style="display:none;margin-bottom:12px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;min-height:80px;position:relative;">
+      <div id="img-url-preview" style="display:none;margin-bottom:12px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;min-height:80px;">
         <img id="img-url-preview-img" src="" alt="" style="max-width:100%;max-height:160px;border-radius:6px;"
           onload="imgUrlOk()" onerror="imgUrlErr()">
         <div id="img-url-status" style="font-size:.78rem;margin-top:6px;"></div>
@@ -513,7 +514,8 @@
     <!-- File Tab -->
     <div id="img-tab-file" style="display:none;">
       <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.6;">
-        💡 Wähle ein Bild von deinem Computer. Es wird direkt in die Seite eingebettet – funktioniert auch ohne Internet!
+        💡 Wähle eine Bilddatei von deinem Computer (jpg, png, gif, webp).
+        Das Bild wird direkt eingebettet – funktioniert auch ohne Internet!
       </div>
       <label>Bilddatei auswählen</label>
       <input type="file" id="img-file" accept="image/*" style="margin-bottom:12px;font-size:.82rem;width:100%;" onchange="previewImgFile()">
@@ -522,7 +524,33 @@
       </div>
     </div>
 
-    <label>Alt-Text (Bildbeschreibung – für Barrierefreiheit)</label>
+    <!-- Paste Tab -->
+    <div id="img-tab-paste" style="display:none;">
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.7;">
+        💡 <b>Bild kopieren und hier einfügen:</b><br>
+        1. Klicke im Internet mit der <b>rechten Maustaste</b> auf ein Bild → „Bild kopieren"<br>
+        2. Klicke in das Feld unten und drücke <b>Strg+V</b><br>
+        Das Bild wird direkt eingebettet und kann danach bearbeitet werden.
+      </div>
+      <div id="paste-drop-zone"
+        style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;
+               color:var(--text2);font-size:.88rem;cursor:pointer;transition:all .15s;min-height:100px;
+               display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;"
+        onclick="this.focus()" tabindex="0"
+        onpaste="handlePasteInZone(event)"
+        onkeydown="if(event.ctrlKey&&event.key==='v')handlePasteInZone(event)"
+        onfocus="this.style.borderColor='var(--accent)';this.style.background='#f0f4ff';"
+        onfocusout="this.style.borderColor='';this.style.background='';">
+        <span style="font-size:2rem;">📋</span>
+        <span>Hier klicken, dann <b>Strg+V</b> drücken</span>
+      </div>
+      <div id="paste-preview" style="display:none;margin-top:10px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;">
+        <img id="paste-preview-img" src="" alt="" style="max-width:100%;max-height:160px;border-radius:6px;">
+        <div style="font-size:.78rem;color:#1e6b3c;margin-top:6px;font-weight:700;">✅ Bild bereit – klicke auf „Einfügen"</div>
+      </div>
+    </div>
+
+    <label style="margin-top:8px;">Alt-Text (kurze Bildbeschreibung)</label>
     <input type="text" id="img-alt" placeholder="z.B. Foto eines Hundes">
     <div class="modal-btns">
       <button class="mbtn secondary" onclick="closeModal('img-modal')">Abbrechen</button>
@@ -1180,12 +1208,37 @@ function applyBgColor(){
 
 // ── IMAGE MODAL ────────────────────────────────────────────────
 let _imgTab = 'url';
+let _pastedSrc = null;
+
 function switchImgTab(tab){
   _imgTab = tab;
-  document.getElementById('img-tab-url').style.display  = tab==='url'  ? '' : 'none';
-  document.getElementById('img-tab-file').style.display = tab==='file' ? '' : 'none';
-  document.getElementById('img-tab-url-btn').classList.toggle('active',  tab==='url');
-  document.getElementById('img-tab-file-btn').classList.toggle('active', tab==='file');
+  _pastedSrc = null;
+  document.getElementById('img-tab-url').style.display   = tab==='url'   ? '' : 'none';
+  document.getElementById('img-tab-file').style.display  = tab==='file'  ? '' : 'none';
+  document.getElementById('img-tab-paste').style.display = tab==='paste' ? '' : 'none';
+  document.getElementById('img-tab-url-btn').classList.toggle('active',   tab==='url');
+  document.getElementById('img-tab-file-btn').classList.toggle('active',  tab==='file');
+  document.getElementById('img-tab-paste-btn').classList.toggle('active', tab==='paste');
+}
+
+function handlePasteInZone(e){
+  const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+  if(!items) return;
+  for(let item of items){
+    if(item.type.startsWith('image/')){
+      e.preventDefault();
+      const file = item.getAsFile();
+      const r = new FileReader();
+      r.onload = ev => {
+        _pastedSrc = ev.target.result;
+        const prev = document.getElementById('paste-preview');
+        document.getElementById('paste-preview-img').src = _pastedSrc;
+        prev.style.display = 'block';
+      };
+      r.readAsDataURL(file);
+      return;
+    }
+  }
 }
 
 let _imgUrlTimer = null;
@@ -1200,10 +1253,7 @@ function previewImgUrl(){
   status.style.color='var(--text2)';
   img.style.display='none';
   clearTimeout(_imgUrlTimer);
-  _imgUrlTimer = setTimeout(()=>{
-    img.src = url;
-    img.style.display='block';
-  }, 600);
+  _imgUrlTimer = setTimeout(()=>{ img.src=url; img.style.display='block'; }, 600);
 }
 function imgUrlOk(){
   const status = document.getElementById('img-url-status');
@@ -1212,7 +1262,7 @@ function imgUrlOk(){
 }
 function imgUrlErr(){
   const status = document.getElementById('img-url-status');
-  status.textContent = '❌ Bild konnte nicht geladen werden. Tipp: Klicke auf Wikipedia auf die große Bildversion und kopiere die URL aus der Adressleiste.';
+  status.textContent = '❌ Bild konnte nicht geladen werden. Tipp: Rechtsklick auf das Bild → „Bildadresse kopieren“ und diese URL einfügen. Falls das nicht klappt: Bild herunterladen und über den Tab „Datei vom Computer“ einfügen.';
   status.style.color = '#c0392b';
   document.getElementById('img-url-preview-img').style.display='none';
 }
@@ -1233,38 +1283,73 @@ function insertImagePrompt(){
   document.getElementById('img-file').value='';
   document.getElementById('img-url-preview').style.display='none';
   document.getElementById('img-file-preview').style.display='none';
+  document.getElementById('paste-preview').style.display='none';
+  _pastedSrc = null;
   switchImgTab('url');
   openModal('img-modal');
 }
+
 function confirmImage(){
   const alt  = document.getElementById('img-alt').value.trim();
   const file = document.getElementById('img-file').files[0];
   const url  = document.getElementById('img-url').value.trim();
-  // Check URL tab: only use URL if preview loaded OK
+  if(_imgTab==='paste'){
+    if(!_pastedSrc){ alert('Bitte zuerst ein Bild mit Strg+V in das Feld einfügen.'); return; }
+    insertImgSrc(_pastedSrc, alt); return;
+  }
   if(_imgTab==='url' && url){
     const previewImg = document.getElementById('img-url-preview-img');
     if(previewImg.naturalWidth===0 && previewImg.src){
-      if(!confirm('Das Bild konnte nicht als Vorschau geladen werden. Trotzdem einfügen?\n\n(Bei manchen Seiten funktioniert die Vorschau nicht, obwohl das Bild später korrekt angezeigt wird.)')){
+      if(!confirm('Das Bild konnte nicht als Vorschau geladen werden. Trotzdem einfügen?\n\n(Manche Seiten blockieren die Vorschau, obwohl das Bild später korrekt angezeigt wird.)')){
         return;
       }
     }
+    insertImgSrc(url, alt); return;
   }
-  const ins = src => {
-    restoreSelection();
-    const ec=document.getElementById('editor-content'); ec.focus();
-    const wrap=makeImgWrap(src,alt,280,'inline');
-    const sel=window.getSelection();
-    if(sel.rangeCount){
-      const r=sel.getRangeAt(0); r.collapse(false); r.insertNode(wrap);
-      r.setStartAfter(wrap); r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
-    } else { ec.appendChild(wrap); }
-    closeModal('img-modal'); debouncedCodeSync();
-    selectImgWrap(wrap);
-  };
-  if(file){ const r=new FileReader(); r.onload=e=>ins(e.target.result); r.readAsDataURL(file); }
-  else if(url) ins(url);
-  else alert('Bitte eine URL eingeben oder eine Datei auswählen.');
+  if(file){ const r=new FileReader(); r.onload=e=>insertImgSrc(e.target.result,alt); r.readAsDataURL(file); return; }
+  alert('Bitte eine URL eingeben, eine Datei auswählen oder ein Bild einfügen.');
 }
+
+function insertImgSrc(src, alt){
+  restoreSelection();
+  const ec=document.getElementById('editor-content'); ec.focus();
+  const wrap=makeImgWrap(src, alt||'', 280, 'inline');
+  const sel=window.getSelection();
+  if(sel.rangeCount){
+    const r=sel.getRangeAt(0); r.collapse(false); r.insertNode(wrap);
+    r.setStartAfter(wrap); r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+  } else { ec.appendChild(wrap); }
+  closeModal('img-modal'); debouncedCodeSync();
+  selectImgWrap(wrap);
+}
+
+// Paste direkt im Editor: Strg+V mit Bild in der Zwischenablage
+document.getElementById('editor-content').addEventListener('paste', e=>{
+  const items = e.clipboardData?.items;
+  if(!items) return;
+  for(let item of items){
+    if(item.type.startsWith('image/')){
+      e.preventDefault();
+      const file = item.getAsFile();
+      const r = new FileReader();
+      r.onload = ev => {
+        const wrap = makeImgWrap(ev.target.result, '', 280, 'inline');
+        const sel = window.getSelection();
+        if(sel.rangeCount){
+          const range = sel.getRangeAt(0);
+          range.collapse(false); range.insertNode(wrap);
+          range.setStartAfter(wrap); range.collapse(true);
+          sel.removeAllRanges(); sel.addRange(range);
+        } else { document.getElementById('editor-content').appendChild(wrap); }
+        selectImgWrap(wrap);
+        debouncedCodeSync();
+        showSaved('Bild eingefügt – klicke darauf zum Bearbeiten!');
+      };
+      r.readAsDataURL(file);
+      return;
+    }
+  }
+});
 
 // ════════════════════════════════════════════════════════════
 //  LINK / ANCHOR / TABLE
