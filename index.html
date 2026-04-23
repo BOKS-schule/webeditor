@@ -433,6 +433,7 @@
   <span class="sitem">Zeichen: <b id="stat-chars">0</b></span>
   <span class="sitem">Wörter: <b id="stat-words">0</b></span>
   <span class="sitem" id="stat-saved" style="color:var(--green);font-weight:800;"></span>
+  <span id="stat-unsaved" style="display:none;color:#ffd166;font-weight:800;">● Nicht gespeichert</span>
   <span style="flex:1"></span>
   <span style="color:rgba(255,255,255,0.75);font-size:0.68rem;">🌐 Erstellt von Stefanie Bokelberg mit Unterstützung von Claude (Anthropic)</span>
 </div>
@@ -662,14 +663,24 @@
 //  UNSAVED CHANGES TRACKING (muss ganz oben stehen)
 // ════════════════════════════════════════════════════════════
 let _hasUnsavedChanges = false;
-function markUnsaved(){ _hasUnsavedChanges = true; }
-function markSaved(){   _hasUnsavedChanges = false; }
+function markUnsaved(){
+  _hasUnsavedChanges = true;
+  const el = document.getElementById('stat-unsaved');
+  if(el) el.style.display = 'inline';
+}
+function markSaved(){
+  _hasUnsavedChanges = false;
+  const el = document.getElementById('stat-unsaved');
+  if(el) el.style.display = 'none';
+}
 
 window.addEventListener('beforeunload', e => {
   if(_hasUnsavedChanges){
-    e.preventDefault();
-    e.returnValue = ''; // Browser zeigt eigene Warnung
-    return '';
+    // Alle Browser: e.returnValue muss ein nicht-leerer String sein
+    const msg = 'Du hast ungespeicherte Änderungen!';
+    e.preventDefault();   // Firefox
+    e.returnValue = msg;  // Chrome, Edge, Safari
+    return msg;           // Ältere Browser
   }
 });
 
