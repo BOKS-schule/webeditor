@@ -482,76 +482,84 @@
 </div>
 
 <div class="modal-overlay" id="img-modal">
-  <div class="modal">
+  <div class="modal" style="width:440px;">
     <h2>🖼 Bild einfügen</h2>
 
-    <!-- Tab buttons -->
+    <!-- Hinweis-Kasten -->
+    <div style="font-size:.78rem;background:#fff8e8;border-left:4px solid #c8860b;border-radius:0 7px 7px 0;padding:8px 12px;margin-bottom:12px;line-height:1.6;color:#5a3a00;">
+      <b>Empfehlung:</b> Lade das Bild zuerst herunter und füge es dann über
+      <b>„💾 Datei vom Computer"</b> ein. Das funktioniert immer zuverlässig –
+      egal von welcher Webseite das Bild stammt.
+    </div>
+
+    <!-- Tab buttons – Datei zuerst -->
     <div class="modal-tabs" style="margin-bottom:12px;">
-      <button class="modal-tab active" id="img-tab-url-btn"  onclick="switchImgTab('url')">🌐 Bild-URL</button>
-      <button class="modal-tab"        id="img-tab-file-btn" onclick="switchImgTab('file')">💾 Datei vom Computer</button>
-      <button class="modal-tab"        id="img-tab-paste-btn" onclick="switchImgTab('paste')">📋 Einfügen</button>
+      <button class="modal-tab active" id="img-tab-file-btn"  onclick="switchImgTab('file')">💾 Datei vom Computer</button>
+      <button class="modal-tab"        id="img-tab-paste-btn" onclick="switchImgTab('paste')">📋 Kopieren &amp; Einfügen</button>
+      <button class="modal-tab"        id="img-tab-url-btn"   onclick="switchImgTab('url')">🌐 URL (nicht immer möglich)</button>
     </div>
 
-    <!-- URL Tab -->
-    <div id="img-tab-url">
+    <!-- File Tab (Standard) -->
+    <div id="img-tab-file">
       <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.7;">
-        💡 <b>So findest du eine Bild-URL:</b><br>
-        Klicke im Internet mit der <b>rechten Maustaste</b> auf ein Bild →
-        „Bildadresse kopieren" (oder „Bild in neuem Tab öffnen" → URL kopieren).<br>
-        Geeignete Quellen für freie Bilder:
-        <b>Wikipedia</b> (commons.wikimedia.org) · <b>Pixabay</b> (pixabay.com) · <b>Unsplash</b> (unsplash.com)
+        <b>So geht es:</b><br>
+        1. Gehe auf eine Bildseite (z.&nbsp;B. <b>Pixabay</b>, <b>Unsplash</b> oder <b>Wikipedia</b>)<br>
+        2. Lade das Bild herunter (Rechtsklick → „Bild speichern unter…")<br>
+        3. Wähle die gespeicherte Datei hier aus
       </div>
-      <label>Bild-URL eingeben oder einfügen</label>
-      <input type="text" id="img-url" placeholder="https://…/bild.jpg oder bild.png"
-        oninput="previewImgUrl()" style="margin-bottom:8px;">
-      <div id="img-url-preview" style="display:none;margin-bottom:12px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;min-height:80px;">
-        <img id="img-url-preview-img" src="" alt="" style="max-width:100%;max-height:160px;border-radius:6px;"
-          onload="imgUrlOk()" onerror="imgUrlErr()">
-        <div id="img-url-status" style="font-size:.78rem;margin-top:6px;"></div>
-      </div>
-    </div>
-
-    <!-- File Tab -->
-    <div id="img-tab-file" style="display:none;">
-      <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.6;">
-        💡 Wähle eine Bilddatei von deinem Computer (jpg, png, gif, webp).
-        Das Bild wird direkt eingebettet – funktioniert auch ohne Internet!
-      </div>
-      <label>Bilddatei auswählen</label>
+      <label>Bilddatei auswählen (jpg, png, gif, webp)</label>
       <input type="file" id="img-file" accept="image/*" style="margin-bottom:12px;font-size:.82rem;width:100%;" onchange="previewImgFile()">
       <div id="img-file-preview" style="display:none;margin-bottom:12px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;">
-        <img id="img-file-preview-img" src="" alt="" style="max-width:100%;max-height:160px;border-radius:6px;">
+        <img id="img-file-preview-img" src="" alt="" style="max-width:100%;max-height:150px;border-radius:6px;">
+        <div style="font-size:.78rem;color:#1e6b3c;margin-top:6px;font-weight:700;">✅ Bereit – klicke auf „Einfügen"</div>
       </div>
     </div>
 
     <!-- Paste Tab -->
     <div id="img-tab-paste" style="display:none;">
       <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;background:var(--surface2);border-radius:7px;padding:8px 10px;line-height:1.7;">
-        💡 <b>Bild kopieren und hier einfügen:</b><br>
-        1. Klicke im Internet mit der <b>rechten Maustaste</b> auf ein Bild → „Bild kopieren"<br>
+        <b>So geht es:</b><br>
+        1. Klicke im Browser mit der <b>rechten Maustaste</b> auf ein Bild → <b>„Bild kopieren"</b><br>
         2. Klicke in das Feld unten und drücke <b>Strg+V</b><br>
-        Das Bild wird direkt eingebettet und kann danach bearbeitet werden.
+        <i style="color:#888;">Tipp: Klappt am besten bei Wikipedia-Bildern. Bei Pixabay/Unsplash lieber herunterladen.</i>
       </div>
       <div id="paste-drop-zone"
         style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;
-               color:var(--text2);font-size:.88rem;cursor:pointer;transition:all .15s;min-height:100px;
+               color:var(--text2);font-size:.88rem;cursor:pointer;transition:all .15s;min-height:90px;
                display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;"
         onclick="this.focus()" tabindex="0"
         onpaste="handlePasteInZone(event)"
-        onkeydown="if(event.ctrlKey&&event.key==='v')handlePasteInZone(event)"
         onfocus="this.style.borderColor='var(--accent)';this.style.background='#f0f4ff';"
         onfocusout="this.style.borderColor='';this.style.background='';">
         <span style="font-size:2rem;">📋</span>
         <span>Hier klicken, dann <b>Strg+V</b> drücken</span>
       </div>
       <div id="paste-preview" style="display:none;margin-top:10px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;">
-        <img id="paste-preview-img" src="" alt="" style="max-width:100%;max-height:160px;border-radius:6px;">
+        <img id="paste-preview-img" src="" alt="" style="max-width:100%;max-height:150px;border-radius:6px;">
         <div style="font-size:.78rem;color:#1e6b3c;margin-top:6px;font-weight:700;">✅ Bild bereit – klicke auf „Einfügen"</div>
       </div>
     </div>
 
-    <label style="margin-top:8px;">Alt-Text (kurze Bildbeschreibung)</label>
-    <input type="text" id="img-alt" placeholder="z.B. Foto eines Hundes">
+    <!-- URL Tab -->
+    <div id="img-tab-url" style="display:none;">
+      <div style="font-size:.78rem;background:#fff0f0;border-left:4px solid #c0392b;border-radius:0 7px 7px 0;padding:8px 12px;margin-bottom:8px;line-height:1.6;color:#7a1a1a;">
+        <b>⚠️ Achtung:</b> Viele Webseiten (z.&nbsp;B. Pixabay, Unsplash) blockieren das direkte
+        Einbinden über URLs. Am zuverlässigsten funktioniert das nur bei
+        <b>Wikipedia</b>-Bildern (commons.wikimedia.org).<br>
+        Falls die Vorschau rot erscheint → bitte Bild herunterladen und über „Datei vom Computer" einfügen.
+      </div>
+      <label>Bild-URL eingeben</label>
+      <input type="text" id="img-url" placeholder="https://upload.wikimedia.org/…/bild.jpg"
+        oninput="previewImgUrl()" style="margin-bottom:8px;">
+      <div id="img-url-preview" style="display:none;margin-bottom:12px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;min-height:80px;">
+        <img id="img-url-preview-img" src="" alt="" style="max-width:100%;max-height:150px;border-radius:6px;"
+          onload="imgUrlOk()" onerror="imgUrlErr()">
+        <div id="img-url-status" style="font-size:.78rem;margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <label style="margin-top:4px;">Alt-Text (kurze Bildbeschreibung)</label>
+    <input type="text" id="img-alt" placeholder="z.B. Foto einer Eiscreme">
     <div class="modal-btns">
       <button class="mbtn secondary" onclick="closeModal('img-modal')">Abbrechen</button>
       <button class="mbtn primary"   onclick="confirmImage()">Einfügen</button>
@@ -1207,18 +1215,18 @@ function applyBgColor(){
 }
 
 // ── IMAGE MODAL ────────────────────────────────────────────────
-let _imgTab = 'url';
+let _imgTab = 'file';
 let _pastedSrc = null;
 
 function switchImgTab(tab){
   _imgTab = tab;
   _pastedSrc = null;
-  document.getElementById('img-tab-url').style.display   = tab==='url'   ? '' : 'none';
   document.getElementById('img-tab-file').style.display  = tab==='file'  ? '' : 'none';
   document.getElementById('img-tab-paste').style.display = tab==='paste' ? '' : 'none';
-  document.getElementById('img-tab-url-btn').classList.toggle('active',   tab==='url');
+  document.getElementById('img-tab-url').style.display   = tab==='url'   ? '' : 'none';
   document.getElementById('img-tab-file-btn').classList.toggle('active',  tab==='file');
   document.getElementById('img-tab-paste-btn').classList.toggle('active', tab==='paste');
+  document.getElementById('img-tab-url-btn').classList.toggle('active',   tab==='url');
 }
 
 function handlePasteInZone(e){
@@ -1285,7 +1293,7 @@ function insertImagePrompt(){
   document.getElementById('img-file-preview').style.display='none';
   document.getElementById('paste-preview').style.display='none';
   _pastedSrc = null;
-  switchImgTab('url');
+  switchImgTab('file');
   openModal('img-modal');
 }
 
