@@ -1502,7 +1502,10 @@ function syncCodeToEditor(){
 }
 
 let codeDebounce=null;
-function debouncedCodeSync(){if(currentView==='split'){clearTimeout(codeDebounce);codeDebounce=setTimeout(syncEditorToCode,400);}}
+function debouncedCodeSync(){
+  markUnsaved();
+  if(currentView==='split'){clearTimeout(codeDebounce);codeDebounce=setTimeout(syncEditorToCode,400);}
+}
 
 function updatePreview(pageId){
   saveCurrentPageContent();
@@ -1798,12 +1801,51 @@ document.getElementById('filename-input').addEventListener('input', updateFilena
 function updateStatus(){const t=document.getElementById('editor-content').innerText||'';document.getElementById('stat-chars').textContent=t.length;document.getElementById('stat-words').textContent=t.trim()?t.trim().split(/\s+/).length:0;}
 function showSaved(msg){const el=document.getElementById('stat-saved');el.textContent='✓ '+msg;clearTimeout(el._t);el._t=setTimeout(()=>el.textContent='',2500);}
 
-document.getElementById('editor-content').addEventListener('input',()=>{updateStatus();debouncedCodeSync();});
+document.getElementById('editor-content').addEventListener('input',()=>{updateStatus();debouncedCodeSync();markUnsaved();});
 document.getElementById('editor-content').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;');}});
 
-setInterval(()=>{saveCurrentPageContent();try{sessionStorage.setItem('webeditor_backup',JSON.stringify({version:EDITOR_VERSION,pages,currentPageId,pageIdCounter}));}catch{}},10000);
+// ── UNSAVED CHANGES TRACKING ───────────────────────────────────
+let _hasUnsavedChanges = false;
+
+function markUnsaved(){
+  _hasUnsavedChanges = true;
+}
+function markSaved(){
+  _hasUnsavedChanges = false;
+}
+
+// Mark saved whenever a project is actually saved to disk
+const _origSaveProject = saveProject;
+// Patch showSaved to detect real saves (JSON download)
+const _origShowSaved = showSaved;
+function showSaved(msg){
+  _origShowSaved(msg);
+  // Only mark as saved when a .json project file was saved (not HTML download)
+  if(msg.includes('.json') || msg.includes('geladen')){
+    markSaved();
+  }
+}
+
+// Warn before closing/reloading if there are unsaved changes
+window.addEventListener('beforeunload', e => {
+  saveCurrentPageContent();
+  if(_hasUnsavedChanges){
+    const msg = 'Du hast ungespeicherte Änderungen. Bitte speichere dein Projekt zuerst (Schaltfläche „Speichern")!';
+    e.preventDefault();
+    e.returnValue = msg; // required for Chrome
+    return msg;
+  }
+});
+
+// Mark unsaved on any content change
+setInterval(()=>{
+  saveCurrentPageContent();
+  try{sessionStorage.setItem('webeditor_backup',JSON.stringify({version:EDITOR_VERSION,pages,currentPageId,pageIdCounter}));}catch{}
+},10000);
 
 init();
+// Mark clean at start (nothing to save yet)
+markSaved();
 </script>
 </body>
 </html>
