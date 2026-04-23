@@ -659,28 +659,44 @@
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════════
-//  UNSAVED CHANGES TRACKING (muss ganz oben stehen)
-// ════════════════════════════════════════════════════════════
+// ── UNSAVED CHANGES: robustes Polling statt fragile Events ─────
 let _hasUnsavedChanges = false;
-function markUnsaved(){
-  _hasUnsavedChanges = true;
-  const el = document.getElementById('stat-unsaved');
-  if(el) el.style.display = 'inline';
+let _lastSavedSnapshot = '';  // JSON-Snapshot beim letzten Speichern
+
+function getSnapshot(){
+  // Erstellt einen Fingerabdruck des aktuellen Projektstands
+  saveCurrentPageContent();
+  try { return JSON.stringify(pages.map(p=>({id:p.id,name:p.name,content:p.content}))); }
+  catch(e) { return ''; }
 }
+
 function markSaved(){
   _hasUnsavedChanges = false;
+  _lastSavedSnapshot = getSnapshot();
   const el = document.getElementById('stat-unsaved');
   if(el) el.style.display = 'none';
 }
 
+function checkUnsaved(){
+  // Vergleicht den aktuellen Stand mit dem letzten Speicherstand
+  if(_lastSavedSnapshot === '') return; // noch nicht initialisiert
+  const current = getSnapshot();
+  const changed = current !== _lastSavedSnapshot;
+  _hasUnsavedChanges = changed;
+  const el = document.getElementById('stat-unsaved');
+  if(el) el.style.display = changed ? 'inline' : 'none';
+}
+
+// Alle 2 Sekunden prüfen ob sich etwas geändert hat
+setInterval(checkUnsaved, 2000);
+
 window.addEventListener('beforeunload', e => {
+  checkUnsaved(); // einmal direkt prüfen
   if(_hasUnsavedChanges){
-    // Alle Browser: e.returnValue muss ein nicht-leerer String sein
     const msg = 'Du hast ungespeicherte Änderungen!';
-    e.preventDefault();   // Firefox
-    e.returnValue = msg;  // Chrome, Edge, Safari
-    return msg;           // Ältere Browser
+    e.preventDefault();
+    e.returnValue = msg;
+    return msg;
   }
 });
 
@@ -738,7 +754,6 @@ function confirmAddPage(){
   const np={id:pageIdCounter++,name,content:`<h1>${name}</h1><p>Inhalt der Seite "${name}".</p>`};
   pages.push(np);currentPageId=np.id;
   renderPageList();loadPageIntoEditor(currentPageId);closeModal('page-modal');syncViewAfterSwitch();
-  markUnsaved();
 }
 function deletePage(id){
   if(pages.length===1){alert('Du kannst die letzte Seite nicht löschen.');return;}
@@ -1530,7 +1545,6 @@ function syncCodeToEditor(){
 
 let codeDebounce=null;
 function debouncedCodeSync(){
-  markUnsaved();
   if(currentView==='split'){clearTimeout(codeDebounce);codeDebounce=setTimeout(syncEditorToCode,400);}
 }
 
@@ -1827,10 +1841,10 @@ document.addEventListener('keydown',e=>{
 document.getElementById('filename-input').addEventListener('input', updateFilenamePreview);
 function updateStatus(){const t=document.getElementById('editor-content').innerText||'';document.getElementById('stat-chars').textContent=t.length;document.getElementById('stat-words').textContent=t.trim()?t.trim().split(/\s+/).length:0;}
 function showSaved(msg){const el=document.getElementById('stat-saved');el.textContent='✓ '+msg;clearTimeout(el._t);el._t=setTimeout(()=>el.textContent='',2500);
-  if(msg.includes('.json')||msg.includes('geladen')) markSaved();
+  if(msg.includes('.json')||msg.includes('geladen')) markSaved(); // Gespeichert-Snapshot aktualisieren
 }
 
-document.getElementById('editor-content').addEventListener('input',()=>{updateStatus();debouncedCodeSync();markUnsaved();});
+document.getElementById('editor-content').addEventListener('input',()=>{updateStatus();debouncedCodeSync();});
 document.getElementById('editor-content').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;');}});
 
 // Mark unsaved on any content change
@@ -1840,7 +1854,7 @@ setInterval(()=>{
 },10000);
 
 init();
-markSaved(); // beim Start gibt es nichts Ungespeichertes
+setTimeout(markSaved, 500); // Snapshot nach Init erstellen (kurze Pause damit alles geladen ist)
 </script>
 </body>
 </html>
