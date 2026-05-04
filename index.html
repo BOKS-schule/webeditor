@@ -305,10 +305,32 @@
     <button class="tb-btn" onclick="insertAnchor()">⚓ Anker</button>
     <button class="tb-btn" onclick="insertImagePrompt()">🖼 Bild</button>
     <button class="tb-btn" onclick="insertTable()">⊞ Tabelle</button>
+    <button class="tb-btn" onclick="toggleSymbolPicker()" id="btn-symbols" title="Pfeile und Symbole einfügen">❯ Symbole</button>
+    <div class="tb-sep"></div>
+    <span class="tb-label">Seiten­hintergrund</span>
+    <input type="color" class="tb-color" id="col-pagebg" value="#ffffff"
+      title="Seitenhintergrundfarbe ändern"
+      onchange="applyPageBg(this.value)">
     <div class="tb-sep"></div>
     <button class="tb-btn" onclick="execCmd('undo')">↩ Rückgängig</button>
     <button class="tb-btn" onclick="execCmd('redo')">↪ Wiederholen</button>
   </div>
+</div>
+
+<!-- SYMBOL PICKER -->
+<div id="symbol-picker" style="
+  display:none; position:fixed; z-index:600;
+  background:#fff; border:1.5px solid var(--border);
+  border-radius:10px; box-shadow:0 6px 24px rgba(67,97,238,.18);
+  padding:10px 12px; width:310px;
+">
+  <div style="font-size:.72rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Pfeile &amp; Symbole – klicken zum Einfügen</div>
+  <div id="symbol-grid" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+  <button onclick="document.getElementById('symbol-picker').style.display='none'"
+    style="margin-top:10px;width:100%;padding:5px;border:1px solid var(--border);border-radius:7px;
+           background:var(--surface2);font-family:inherit;font-size:.8rem;cursor:pointer;color:var(--text2);">
+    Schließen
+  </button>
 </div>
 
 <div id="format-bar">
@@ -740,12 +762,19 @@ function switchPage(id){saveCurrentPageContent();deselectImg();currentPageId=id;
 function loadPageIntoEditor(id){
   const p=pages.find(x=>x.id===id); if(!p)return;
   document.getElementById('editor-content').innerHTML=p.content;
+  // Hintergrundfarbe der Seite wiederherstellen
+  const bg = p.bgColor || '#ffffff';
+  document.getElementById('editor-content').style.background = bg;
+  document.getElementById('col-pagebg').value = bg;
   document.getElementById('stat-page').textContent=p.name;
   attachAllImgHandlers(); updateStatus();
 }
 function saveCurrentPageContent(){
   const p=pages.find(x=>x.id===currentPageId);
-  if(p) p.content=getCleanContent();
+  if(p){
+    p.content=getCleanContent();
+    p.bgColor=document.getElementById('editor-content').style.background||'#ffffff';
+  }
 }
 function addPage(){document.getElementById('page-name-input').value='';openModal('page-modal');setTimeout(()=>document.getElementById('page-name-input').focus(),150);}
 function confirmAddPage(){
@@ -1111,13 +1140,15 @@ function openLinkInNewTab(){
 
 function openLinkEditor(){
   if(!currentLinkEl) return;
-  const href = currentLinkEl.getAttribute('href') || '';
-  const text = currentLinkEl.innerText || '';
-  const blank = currentLinkEl.getAttribute('target') === '_blank';
+  const savedLink = currentLinkEl; // Referenz sichern BEVOR hideLinkTooltip sie löscht
+  const href = savedLink.getAttribute('href') || '';
+  const text = savedLink.innerText || '';
+  const blank = savedLink.getAttribute('target') === '_blank';
   document.getElementById('le-href').value = href;
   document.getElementById('le-text').value = text;
   document.getElementById('le-blank').checked = blank;
   hideLinkTooltip();
+  currentLinkEl = savedLink; // Referenz wiederherstellen
   openModal('link-edit-modal');
   setTimeout(()=>document.getElementById('le-href').focus(), 150);
 }
@@ -1225,7 +1256,65 @@ function insertHR(){document.getElementById('editor-content').focus();document.e
 // ════════════════════════════════════════════════════════════
 //  INSERT IMAGE
 // ════════════════════════════════════════════════════════════
-// ── COLOR: apply stored color / update swatch ──────────────────
+// ── PAGE BACKGROUND COLOR ──────────────────────────────────────
+function applyPageBg(color){
+  document.getElementById('editor-content').style.background = color;
+  // Store in page metadata so it's exported correctly
+  const page = pages.find(p=>p.id===currentPageId);
+  if(page) page.bgColor = color;
+  debouncedCodeSync();
+}
+
+// ── SYMBOL PICKER ──────────────────────────────────────────────
+const SYMBOLS = [
+  // Pfeile
+  '→','←','↑','↓','↔','↕','↗','↘','↙','↖',
+  '⇒','⇐','⇑','⇓','⇔','⇕',
+  '➜','➔','➡','⬅','⬆','⬇','➤','▶','◀','▲','▼',
+  // Geometrie
+  '●','○','■','□','▪','▫','◆','◇','★','☆',
+  '▲','△','▼','▽','◉','◎',
+  // Zeichen
+  '✓','✔','✗','✘','✕','±','×','÷','≈','≠',
+  '©','®','™','°','§','¶','…','–','—',
+  // Smarte Symbole
+  '☑','☐','☒','⚠','ℹ','✉','☎','✂','✏','⭐',
+];
+
+function toggleSymbolPicker(){
+  const picker = document.getElementById('symbol-picker');
+  if(picker.style.display !== 'none'){ picker.style.display='none'; return; }
+  // Build grid if empty
+  const grid = document.getElementById('symbol-grid');
+  if(!grid.children.length){
+    SYMBOLS.forEach(sym => {
+      const btn = document.createElement('button');
+      btn.textContent = sym;
+      btn.title = 'Einfügen: ' + sym;
+      btn.style.cssText = 'width:30px;height:30px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s;';
+      btn.onmouseover = () => btn.style.background = 'var(--accent)';
+      btn.onmouseout  = () => btn.style.background = 'var(--surface2)';
+      btn.onclick = () => {
+        document.getElementById('editor-content').focus();
+        document.execCommand('insertText', false, sym);
+        debouncedCodeSync();
+      };
+      grid.appendChild(btn);
+    });
+  }
+  // Position below button
+  const btnRect = document.getElementById('btn-symbols').getBoundingClientRect();
+  picker.style.top  = (btnRect.bottom + 8) + 'px';
+  picker.style.left = Math.min(btnRect.left, window.innerWidth - 320) + 'px';
+  picker.style.display = 'block';
+}
+// Close symbol picker when clicking outside
+document.addEventListener('click', e => {
+  const picker = document.getElementById('symbol-picker');
+  if(picker && !picker.contains(e.target) && e.target.id !== 'btn-symbols'){
+    picker.style.display = 'none';
+  }
+});
 let _foreColor = '#1a1a2e';
 let _bgColor   = '#ffff00';
 
@@ -1509,6 +1598,7 @@ function getCleanContent(){
 function syncEditorToCode(){
   const content=getCleanContent();
   const page=pages.find(p=>p.id===currentPageId),title=page?page.name:'Meine Seite';
+  const bgColor = (page && page.bgColor) ? page.bgColor : '#ffffff';
   document.getElementById('code-editor').value=
 `<!DOCTYPE html>
 <html lang="de">
@@ -1517,7 +1607,7 @@ function syncEditorToCode(){
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; line-height: 1.7; color: #222; position: relative; }
+    body { font-family: Arial, sans-serif; padding: 24px 36px; line-height: 1.7; color: #222; position: relative; margin: 0; background: ${bgColor}; }
     .img-wrap { display: inline-block; position: relative; line-height: 0; vertical-align: bottom; }
     .img-wrap.wrap-left  { float: left;  margin: 4px 14px 6px 0; display: block; }
     .img-wrap.wrap-right { float: right; margin: 4px 0 6px 14px; display: block; }
@@ -1553,6 +1643,7 @@ function updatePreview(pageId){
   const pid = pageId || currentPageId;
   const page = pages.find(p=>p.id===pid);
   if(!page) return;
+  const bgColor = page.bgColor || '#ffffff';
 
   // Build a page-lookup by filename so internal links can be resolved
   function filenameFor(p){ return p.name.replace(/[^a-z0-9äöüß_-]/gi,'_').toLowerCase()+'.html'; }
@@ -1568,7 +1659,7 @@ function updatePreview(pageId){
   }
 
   const sharedCSS=`
-    body{font-family:Arial,sans-serif;padding:24px 36px;line-height:1.7;color:#222;position:relative;margin:0;}
+    body{font-family:Arial,sans-serif;padding:24px 36px;line-height:1.7;color:#222;position:relative;margin:0;background:${bgColor};}
     .img-wrap{display:inline-block;position:relative;line-height:0;vertical-align:bottom;}
     .img-wrap.wrap-left{float:left;margin:4px 14px 6px 0;display:block;}
     .img-wrap.wrap-right{float:right;margin:4px 0 6px 14px;display:block;}
@@ -1845,7 +1936,26 @@ function showSaved(msg){const el=document.getElementById('stat-saved');el.textCo
 }
 
 document.getElementById('editor-content').addEventListener('input',()=>{updateStatus();debouncedCodeSync();});
-document.getElementById('editor-content').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;');}});
+document.getElementById('editor-content').addEventListener('keydown',e=>{
+  if(e.key==='Tab'){e.preventDefault();document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;');}
+
+  // Entf oder Backspace innerhalb eines Links → Link-Löschen anbieten
+  if(e.key==='Delete' || e.key==='Backspace'){
+    const sel = window.getSelection();
+    if(sel && sel.rangeCount > 0){
+      const node = sel.getRangeAt(0).startContainer;
+      const link = (node.nodeType===3 ? node.parentElement : node).closest('a[href]');
+      if(link && document.getElementById('editor-content').contains(link)){
+        // Nur wenn Cursor im Link steht (keine Textauswahl)
+        if(sel.isCollapsed){
+          e.preventDefault();
+          currentLinkEl = link;
+          showLinkTooltip(link);
+        }
+      }
+    }
+  }
+});
 
 // Mark unsaved on any content change
 setInterval(()=>{
