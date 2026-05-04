@@ -412,6 +412,7 @@
   </div>
   <div class="ip-sep"></div>
   <div class="ip-btn-row">
+    <button class="ip-btn" onclick="imgUndo()" title="Letzte Bildänderung rückgängig">↩ Rückgängig</button>
     <button class="ip-btn del" onclick="deleteSelectedImg()">🗑 Löschen</button>
   </div>
 </div>
@@ -967,37 +968,105 @@ function applyImgPos(){
   debouncedCodeSync();
 }
 
+// ── BILD-UNDO-STACK ────────────────────────────────────────
+// Da DOM-Änderungen am Bild vom Browser-Undo nicht erfasst werden,
+// führen wir einen eigenen Undo-Stack für Bildoperationen.
+let imgUndoStack = [];
+
+function pushImgUndo(wrap){
+  imgUndoStack.push({
+    wrap,
+    style:    wrap.getAttribute('style') || '',
+    wrapMode: wrap.getAttribute('data-wrap') || 'inline',
+    className: wrap.className,
+    // Position im DOM merken
+    parent:   wrap.parentNode,
+    nextSib:  wrap.nextSibling,
+  });
+  if(imgUndoStack.length > 30) imgUndoStack.shift();
+}
+
+function imgUndo(){
+  if(!imgUndoStack.length) return;
+  const state = imgUndoStack.pop();
+  const {wrap, style, wrapMode, className, parent, nextSib} = state;
+  // Stil wiederherstellen
+  wrap.setAttribute('style', style);
+  wrap.setAttribute('data-wrap', wrapMode);
+  wrap.className = className;
+  // DOM-Position wiederherstellen falls das Bild verschoben wurde
+  if(parent && wrap.parentNode !== parent){
+    if(nextSib && nextSib.parentNode === parent) parent.insertBefore(wrap, nextSib);
+    else parent.appendChild(wrap);
+  }
+  selectImgWrap(wrap);
+  debouncedCodeSync();
+  showSaved('Bild-Aktion rückgängig gemacht');
+}
+
 // ── WRAP MODE ──────────────────────────────────────────────
 function applyWrap(mode){
   if(!selWrap) return;
-  const oldMode=selWrap.getAttribute('data-wrap');
-  // if switching from absolute to non-absolute, clear position
-  if((oldMode==='behind'||oldMode==='front')&&(mode!=='behind'&&mode!=='front')){
+  const oldMode = selWrap.getAttribute('data-wrap');
+  pushImgUndo(selWrap); // Zustand vor Änderung merken
+
+  // Warnung bei absolutem Modus (nur beim ersten Wechsel)
+  if((mode==='behind'||mode==='front') && oldMode!=='behind' && oldMode!=='front'){
+    const ok = confirm(
+      'Hinweis: Im Modus "Vorne" und "Hinten" wird das Bild frei platziert.\n\n' +
+      'Das bedeutet: Text fließt NICHT mehr um das Bild herum.\n' +
+      'Zum Tippen nach dem Bild den Button "Textzeile +" im Bildpanel nutzen.\n\n' +
+      'Trotzdem fortfahren?'
+    );
+    if(!ok){ imgUndoStack.pop(); return; }
+  }
+
+  const ec = document.getElementById('editor-content');
+
+  // Von absolut → Fließtext: Bild an Cursorposition im Text einsetzen
+  if((oldMode==='behind'||oldMode==='front') && (mode!=='behind'&&mode!=='front')){
     selWrap.style.left=''; selWrap.style.top='';
+    selWrap.style.position=''; selWrap.style.zIndex='';
+    // Bild an aktueller Cursor-Position einfügen (oder am Ende)
+    const sel = window.getSelection();
+    if(sel && sel.rangeCount > 0 && ec.contains(sel.getRangeAt(0).startContainer)){
+      const range = sel.getRangeAt(0);
+      range.collapse(true);
+      range.insertNode(selWrap);
+    } else {
+      // Am Ende einfügen: letzten Paragraphen finden
+      const paras = ec.querySelectorAll('p, div, h1, h2, h3');
+      const last = paras[paras.length-1];
+      if(last) last.parentNode.insertBefore(selWrap, last.nextSibling);
+      else ec.appendChild(selWrap);
+    }
   }
-  // if switching to absolute, set initial position
-  if((mode==='behind'||mode==='front')&&(oldMode!=='behind'&&oldMode!=='front')){
-    const ec=document.getElementById('editor-content');
-    const wRect=selWrap.getBoundingClientRect();
-    const ecRect=ec.getBoundingClientRect();
-    selWrap.style.left=Math.round(wRect.left-ecRect.left+ec.scrollLeft)+'px';
-    selWrap.style.top=Math.round(wRect.top-ecRect.top+ec.scrollTop)+'px';
+
+  // Von Fließtext → absolut: Position vom aktuellen Bildort ableiten
+  if((mode==='behind'||mode==='front') && (oldMode!=='behind'&&oldMode!=='front')){
+    const wRect = selWrap.getBoundingClientRect();
+    const ecRect = ec.getBoundingClientRect();
+    selWrap.style.left = Math.round(wRect.left - ecRect.left + ec.scrollLeft) + 'px';
+    selWrap.style.top  = Math.round(wRect.top  - ecRect.top  + ec.scrollTop)  + 'px';
   }
-  // reset float/position before applying new
-  selWrap.style.float=''; selWrap.style.position='';
+
+  selWrap.style.float = '';
   applyWrapStyle(selWrap, mode);
-  showImgPanel(selWrap); debouncedCodeSync();
+  showImgPanel(selWrap);
+  debouncedCodeSync();
 }
 
 // ── OPACITY / RADIUS ──────────────────────────────────────
 function applyImgOpacity(val){
   if(!selWrap) return;
+  pushImgUndo(selWrap);
   selWrap.querySelector('img').style.opacity=(val/100).toFixed(2);
   document.getElementById('ip-op-val').textContent=val+'%';
   debouncedCodeSync();
 }
 function applyImgRadius(val){
   if(!selWrap) return;
+  pushImgUndo(selWrap);
   selWrap.querySelector('img').style.borderRadius=val+'px';
   document.getElementById('ip-rad-val').textContent=val+'px';
   debouncedCodeSync();
@@ -1006,13 +1075,37 @@ function applyImgRadius(val){
 // ── DELETE ────────────────────────────────────────────────
 function deleteSelectedImg(){
   if(!selWrap||!confirm('Bild wirklich löschen?')) return;
+  pushImgUndo(selWrap);
   selWrap.remove(); deselectImg(); debouncedCodeSync();
+}
+
+// ── TEXTZEILE NACH BILD ────────────────────────────────────
+// Fügt eine leere Textzeile am Ende des Editors ein,
+// die auch bei absolut positionierten Bildern klickbar ist.
+function insertLineAfterImg(){
+  const ec = document.getElementById('editor-content');
+  const newP = document.createElement('p');
+  newP.innerHTML = '&nbsp;';
+  newP.style.cssText = 'position:relative;z-index:200;min-height:1.5em;';
+  ec.appendChild(newP);
+  // Cursor in die neue Zeile setzen
+  const sel = window.getSelection();
+  const range = document.createRange();
+  range.setStart(newP, 0);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  newP.focus();
+  deselectImg();
+  debouncedCodeSync();
+  showSaved('Textzeile eingefügt – jetzt tippen!');
 }
 
 // ════════════════════════════════════════════════════════════
 //  DRAG & RESIZE  (global mouse events)
 // ════════════════════════════════════════════════════════════
 function beginDrag(e, wrap){
+  pushImgUndo(wrap); // Zustand vor dem Ziehen merken
   const ec=document.getElementById('editor-content');
   const ecRect=ec.getBoundingClientRect();
   dragState={
@@ -1027,6 +1120,7 @@ function beginDrag(e, wrap){
 }
 
 function beginResize(e, wrap, dir){
+  pushImgUndo(wrap); // Zustand vor dem Skalieren merken
   const img=wrap.querySelector('img');
   dragState={
     type:'resize', wrap, dir,
@@ -1090,13 +1184,46 @@ function setupGlobalDragEvents(){
   document.getElementById('editor-content').addEventListener('mousedown', e=>{
     if(e.target.closest('.img-wrap')) return;
     deselectImg();
-    // Link click detection (with Ctrl or just click on <a>)
+    // Link click detection
     const link = e.target.closest('a[href]');
     if(link && document.getElementById('editor-content').contains(link)){
       e.preventDefault();
       showLinkTooltip(link);
     } else {
       hideLinkTooltip();
+    }
+  });
+
+  // Klick in den leeren Bereich unterhalb aller Inhalte →
+  // automatisch neue Textzeile einfügen (wie in Word)
+  document.getElementById('editor-content').addEventListener('click', e=>{
+    if(e.target.closest('.img-wrap')) return;
+    const ec = document.getElementById('editor-content');
+    // Prüfen ob der Klick unterhalb des letzten Elements war
+    const children = Array.from(ec.childNodes).filter(n=>n.nodeType===1||n.nodeType===3);
+    if(!children.length) return;
+    // Letztes echtes Element finden
+    let lastEl = null;
+    for(let i=ec.childNodes.length-1;i>=0;i--){
+      if(ec.childNodes[i].nodeType===1){lastEl=ec.childNodes[i];break;}
+    }
+    if(!lastEl) return;
+    const lastRect = lastEl.getBoundingClientRect();
+    const ecRect   = ec.getBoundingClientRect();
+    // Wenn Klick deutlich unterhalb des letzten Elements (mehr als 20px)
+    if(e.clientY > lastRect.bottom + 20){
+      // Neue Textzeile am Ende einfügen
+      const newP = document.createElement('p');
+      newP.innerHTML = '\u200B'; // Zero-Width-Space damit der Cursor rein kann
+      ec.appendChild(newP);
+      // Cursor in die neue Zeile setzen
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.setStart(newP.firstChild, 0);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      debouncedCodeSync();
     }
   });
 
@@ -1922,6 +2049,12 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 document.addEventListener('keydown',e=>{
+  // Ctrl+Z: wenn Bild ausgewählt → Bild-Undo, sonst normales Undo
+  if((e.ctrlKey||e.metaKey) && e.key==='z' && selWrap && imgUndoStack.length>0){
+    e.preventDefault();
+    imgUndo();
+    return;
+  }
   if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));deselectImg();hideLinkTooltip();}
   if(e.key==='Enter'&&document.getElementById('page-modal').classList.contains('open')) confirmAddPage();
   if(e.key==='Enter'&&document.getElementById('rename-modal').classList.contains('open')) confirmRenamePage();
