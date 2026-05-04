@@ -417,6 +417,55 @@
   </div>
 </div>
 
+<!-- TABLE PANEL -->
+<div id="table-panel" style="
+  position:fixed; z-index:700;
+  background:#fff; border:1px solid var(--border);
+  border-radius:12px; box-shadow:0 8px 32px rgba(67,97,238,.18);
+  padding:12px 14px; display:none; flex-direction:column;
+  gap:10px; width:240px; font-size:.82rem;
+">
+  <div style="font-size:.78rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">⊞ Tabelle formatieren</div>
+  <div class="ip-sep" style="height:1px;background:var(--border);"></div>
+  <div>
+    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Rahmenfarbe</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <input type="color" id="tbl-border-color" value="#cccccc"
+        style="width:34px;height:28px;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;padding:1px;"
+        oninput="applyTableBorderColor(this.value)">
+      <span style="font-size:.75rem;color:var(--text2);">Farbe wählen</span>
+    </div>
+  </div>
+  <div>
+    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Rahmen-Sichtbarkeit</div>
+    <div style="display:flex;gap:6px;">
+      <button onclick="applyTableBorderVisible(false)"
+        style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);
+               background:var(--surface2);font-family:inherit;font-size:.78rem;
+               font-weight:700;cursor:pointer;color:var(--text2);"
+        title="Ränder unsichtbar machen">
+        ◻ Kein Rahmen
+      </button>
+      <button onclick="applyTableBorderVisible(true)"
+        style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);
+               background:var(--surface2);font-family:inherit;font-size:.78rem;
+               font-weight:700;cursor:pointer;color:var(--text2);"
+        title="Standard-Ränder wiederherstellen">
+        ◼ Rahmen zeigen
+      </button>
+    </div>
+  </div>
+  <div>
+    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Rahmenbreite</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <input type="range" id="tbl-border-width" min="0" max="8" value="1" step="1"
+        style="flex:1;accent-color:var(--accent);cursor:pointer;"
+        oninput="applyTableBorderWidth(this.value); document.getElementById('tbl-border-width-val').textContent=this.value+'px'">
+      <span id="tbl-border-width-val" style="font-size:.75rem;color:var(--accent2);font-family:'JetBrains Mono',monospace;min-width:28px;">1px</span>
+    </div>
+  </div>
+</div>
+
 <div id="main">
   <div id="sidebar">
     <h3>📄 Seiten</h3>
@@ -1184,6 +1233,8 @@ function setupGlobalDragEvents(){
   document.getElementById('editor-content').addEventListener('mousedown', e=>{
     if(e.target.closest('.img-wrap')) return;
     deselectImg();
+    // Hide table panel if click is outside a table
+    if(!e.target.closest('table')) hideTablePanel();
     // Link click detection
     const link = e.target.closest('a[href]');
     if(link && document.getElementById('editor-content').contains(link)){
@@ -1305,6 +1356,63 @@ function removeCurrentLink(){
   currentLinkEl = null;
   debouncedCodeSync(); saveCurrentPageContent();
 }
+
+// ── TABLE PANEL ────────────────────────────────────────────────
+let selTable = null;
+
+function showTablePanel(table){
+  selTable = table;
+  const panel = document.getElementById('table-panel');
+  panel.style.display = 'flex';
+  positionTablePanel(table);
+  const firstCell = table.querySelector('td,th');
+  if(firstCell){
+    const cs = window.getComputedStyle(firstCell);
+    const hex = rgbToHex(cs.borderTopColor);
+    if(hex) document.getElementById('tbl-border-color').value = hex;
+    const bw = Math.round(parseFloat(cs.borderTopWidth))||1;
+    document.getElementById('tbl-border-width').value = Math.min(bw,8);
+    document.getElementById('tbl-border-width-val').textContent = bw+'px';
+  }
+}
+function hideTablePanel(){ selTable=null; document.getElementById('table-panel').style.display='none'; }
+function positionTablePanel(table){
+  const panel=document.getElementById('table-panel');
+  const r=table.getBoundingClientRect();
+  let left=r.right+12; if(left+254>window.innerWidth) left=r.left-258;
+  left=Math.max(4,left);
+  let top=Math.max(60,Math.min(r.top,window.innerHeight-300));
+  panel.style.left=left+'px'; panel.style.top=top+'px';
+}
+function rgbToHex(rgb){
+  const m=rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+  if(!m) return null;
+  return '#'+[m[1],m[2],m[3]].map(x=>parseInt(x).toString(16).padStart(2,'0')).join('');
+}
+function applyTableBorderColor(color){
+  if(!selTable) return;
+  selTable.querySelectorAll('td,th').forEach(c=>c.style.borderColor=color);
+  debouncedCodeSync();
+}
+function applyTableBorderVisible(visible){
+  if(!selTable) return;
+  const color=document.getElementById('tbl-border-color').value||'#cccccc';
+  const width=document.getElementById('tbl-border-width').value||'1';
+  selTable.querySelectorAll('td,th').forEach(c=>{
+    c.style.border = visible ? width+'px solid '+color : '1px solid transparent';
+  });
+  selTable.setAttribute('border', visible?'1':'0');
+  debouncedCodeSync();
+}
+function applyTableBorderWidth(width){
+  if(!selTable) return;
+  const color=document.getElementById('tbl-border-color').value||'#cccccc';
+  selTable.querySelectorAll('td,th').forEach(c=>{
+    c.style.border = parseInt(width)>0 ? width+'px solid '+color : '1px solid transparent';
+  });
+  debouncedCodeSync();
+}
+
 function setupFormatBar(){
   const ec=document.getElementById('editor-content');
   ec.addEventListener('keyup',   updateFormatBar);
@@ -1348,6 +1456,16 @@ function updateFormatBar(){
     const ss=document.getElementById('sel-style');
     let ok=false; for(let o of ss.options) if(o.value===ms){ok=true;break;}
     if(ok)ss.value=ms; else ss.value='';
+
+    // Tabellenrahmen-Panel: zeigen wenn Cursor in Tabelle steht
+    let tableEl = el;
+    while(tableEl && tableEl.id!=='editor-content' && tableEl.tagName!=='TABLE')
+      tableEl = tableEl.parentElement;
+    if(tableEl && tableEl.tagName==='TABLE'){
+      showTablePanel(tableEl);
+    } else {
+      hideTablePanel();
+    }
   }catch(e){}
 }
 
@@ -1695,7 +1813,7 @@ function confirmTable(){
 //  VIEWS
 // ════════════════════════════════════════════════════════════
 function setView(v){
-  saveCurrentPageContent(); deselectImg(); currentView=v;
+  saveCurrentPageContent(); deselectImg(); hideTablePanel(); currentView=v;
   ['editor','split','code','preview'].forEach(id=>document.getElementById('tab-'+id)?.classList.remove('active'));
   document.getElementById('tab-'+v)?.classList.add('active');
   const sv=document.getElementById('split-view'),ep=document.getElementById('editor-pane'),cp=document.getElementById('code-pane'),pp=document.getElementById('preview-pane');
