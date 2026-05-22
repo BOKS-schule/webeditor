@@ -306,11 +306,12 @@
       <option value="" disabled selected>Abstand…</option>
       <option value="1.0">1,0 – Eng</option>
       <option value="1.2">1,2</option>
-      <option value="1.5" selected>1,5 – Normal</option>
+      <option value="1.5">1,5 – Normal</option>
       <option value="1.7">1,7</option>
       <option value="2.0">2,0 – Weit</option>
       <option value="2.5">2,5</option>
     </select>
+    <button class="tb-btn" onclick="resetAllLineSpacing()" title="Alle Zeilenabstände im gesamten Text auf 1,5 zurücksetzen (entfernt eingefügte Abstände)">↺ Abstand</button>
     <div class="tb-sep"></div>
     <button class="tb-btn" id="btn-bold"      onclick="execCmd('bold')"><b>B</b></button>
     <button class="tb-btn" id="btn-italic"    onclick="execCmd('italic')"><i>I</i></button>
@@ -398,6 +399,7 @@
     <span id="fi-color" style="display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid #ccc;vertical-align:middle;"></span>
   </span>
   <span class="fi-sep">·</span>
+  <span id="fi-table-hint" style="display:none;background:#fff8e8;border:1px solid #f4a261;border-radius:5px;padding:2px 8px;font-size:.72rem;font-weight:700;color:#7a4a00;">📊 Tabellen-Panel aktiv (rechts neben der Tabelle)</span>
   <span class="fi" style="margin-left:auto;opacity:.6;font-style:italic;font-size:.68rem;">
     Tipp: Shift+Enter = Zeilenumbruch ohne Abstand
   </span>
@@ -492,6 +494,16 @@
       <button onclick="tableRemoveRow()" style="padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text2);">− Zeile</button>
       <button onclick="tableAddCol()"    style="padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text2);">+ Spalte</button>
       <button onclick="tableRemoveCol()" style="padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text2);">− Spalte</button>
+    </div>
+    <!-- Direkte Eingabe der Größe -->
+    <div style="margin-top:7px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+      <span style="font-size:.72rem;color:var(--text2);font-weight:700;">Größe:</span>
+      <input type="number" id="tbl-target-rows" min="1" max="50" placeholder="Zeilen"
+        style="width:54px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-family:inherit;font-size:.76rem;text-align:center;">
+      <span style="font-size:.72rem;color:var(--text2);">×</span>
+      <input type="number" id="tbl-target-cols" min="1" max="20" placeholder="Spal."
+        style="width:54px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-family:inherit;font-size:.76rem;text-align:center;">
+      <button onclick="tableResizeTo()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--accent);background:#eef1ff;font-family:inherit;font-size:.73rem;font-weight:700;cursor:pointer;color:var(--accent);">✓ Setzen</button>
     </div>
     <div style="font-size:.7rem;color:var(--text2);margin-top:4px;font-style:italic;">
       Zeile wird an aktueller Cursorposition eingefügt / entfernt
@@ -1447,8 +1459,17 @@ function showTablePanel(table){
     document.getElementById('tbl-border-width').value = Math.min(bw,8);
     document.getElementById('tbl-border-width-val').textContent = bw+'px';
   }
+  // Aktuelle Tabellengröße in Eingabefelder eintragen
+  document.getElementById('tbl-target-rows').value = table.rows.length;
+  document.getElementById('tbl-target-cols').value = table.rows.length > 0 ? table.rows[0].cells.length : 0;
+  // Format-Bar Hinweis zeigen
+  const hint = document.getElementById('fi-table-hint');
+  if(hint) hint.style.display = '';
 }
-function hideTablePanel(){ selTable=null; document.getElementById('table-panel').style.display='none'; }
+function hideTablePanel(){ selTable=null; document.getElementById('table-panel').style.display='none';
+  const hint = document.getElementById('fi-table-hint');
+  if(hint) hint.style.display = 'none';
+}
 function positionTablePanel(table){
   const panel=document.getElementById('table-panel');
   const r=table.getBoundingClientRect();
@@ -1542,6 +1563,36 @@ function tableRemoveCol(){
   debouncedCodeSync();
 }
 
+// Tabelle direkt auf gewünschte Zeilen/Spalten-Anzahl bringen
+function tableResizeTo(){
+  if(!selTable) return;
+  const targetRows = parseInt(document.getElementById('tbl-target-rows').value);
+  const targetCols = parseInt(document.getElementById('tbl-target-cols').value);
+  if(!targetRows || !targetCols || targetRows < 1 || targetCols < 1){
+    alert('Bitte gültige Zeilen- und Spaltenanzahl eingeben (mindestens 1).'); return;
+  }
+  const curRows = selTable.rows.length;
+  const curCols = curRows > 0 ? selTable.rows[0].cells.length : 0;
+
+  // Zeilen anpassen
+  if(targetRows > curRows){
+    for(let i=curRows; i<targetRows; i++) tableAddRow();
+  } else if(targetRows < curRows){
+    while(selTable.rows.length > targetRows && selTable.rows.length > 1)
+      selTable.rows[selTable.rows.length-1].remove();
+  }
+  // Spalten anpassen
+  const newCurCols = selTable.rows.length > 0 ? selTable.rows[0].cells.length : 0;
+  if(targetCols > newCurCols){
+    for(let i=newCurCols; i<targetCols; i++) tableAddCol();
+  } else if(targetCols < newCurCols){
+    while(selTable.rows.length > 0 && selTable.rows[0].cells.length > targetCols && selTable.rows[0].cells.length > 1)
+      Array.from(selTable.rows).forEach(row=>{ if(row.cells.length > targetCols) row.deleteCell(row.cells.length-1); });
+  }
+  debouncedCodeSync();
+  showSaved(`Tabelle auf ${targetRows}×${targetCols} geändert.`);
+}
+
 // ── ZELLEN-HINTERGRUNDFARBE ───────────────────────────────────
 function applyTableCellBg(color, target){
   if(!selTable) return;
@@ -1572,6 +1623,13 @@ function cleanPastedHTML(html){
     if(el.tagName&&el.tagName.includes(':')) el.remove();
   });
 
+  // <div>-Blöcke in <p> umwandeln (Google Docs nutzt div statt p)
+  tmp.querySelectorAll('div').forEach(div=>{
+    const p=document.createElement('p');
+    while(div.firstChild) p.appendChild(div.firstChild);
+    if(div.parentNode) div.parentNode.replaceChild(p,div);
+  });
+
   // Tags, die wir BEHALTEN wollen (ohne Attribute)
   const keepTags=new Set(['b','i','u','strong','em','s','sub','sup',
     'p','br','h1','h2','h3','h4','h5','h6',
@@ -1599,6 +1657,10 @@ function cleanPastedHTML(html){
     }
   }
   Array.from(tmp.childNodes).forEach(clean);
+
+  // Mehrfach-<br> zu Absatztrenner reduzieren
+  tmp.querySelectorAll('br + br').forEach(br=>br.remove());
+
   // Leere Paragraphen aufräumen
   tmp.querySelectorAll('p,h1,h2,h3,li').forEach(el=>{
     if(!el.textContent.trim()&&!el.querySelector('img,br')) el.remove();
@@ -1737,6 +1799,26 @@ function applyLineSpacing(val){
   document.getElementById('sel-linespacing').value = val;
   debouncedCodeSync();
 }
+// Entfernt ALLE inline line-height-Angaben aus dem gesamten Dokument
+// und setzt den Zeilenabstand auf 1,5 (Standard) zurück
+function resetAllLineSpacing(){
+  const ec = document.getElementById('editor-content');
+  // Alle Elemente mit inline line-height bereinigen
+  ec.querySelectorAll('[style]').forEach(el=>{
+    el.style.lineHeight = '';
+    el.style.marginTop = '';
+    el.style.marginBottom = '';
+    // Style-Attribut komplett entfernen wenn leer
+    if(!el.getAttribute('style') || el.getAttribute('style').replace(/[\s;]/g,'') === '')
+      el.removeAttribute('style');
+  });
+  // Auch globales line-height am editor-content zurücksetzen
+  ec.style.lineHeight = '';
+  document.getElementById('sel-linespacing').value = '';
+  debouncedCodeSync();
+  showSaved('Alle Zeilenabstände zurückgesetzt.');
+}
+
 function applyPageBg(color){
   document.getElementById('editor-content').style.background = color;
   // Store in page metadata so it's exported correctly
@@ -2013,23 +2095,28 @@ document.getElementById('editor-content').addEventListener('paste', e=>{
   const html = e.clipboardData?.getData('text/html') || '';
   const text = e.clipboardData?.getData('text/plain') || '';
 
-  // Externe Quelle erkennen: enthaelt Formatierungsattribute oder Word-Kennzeichen
-  const isExternal = html && (
-    html.includes('style=') || html.includes('class=') ||
-    html.includes('<!--[if') || html.includes('mso-') ||
-    html.includes('font-family') || html.includes('xmlns') ||
-    html.includes('color:') || html.includes('font-size')
-  );
-
-  if(isExternal){
+  if(html){
     e.preventDefault();
-    const clean = cleanPastedHTML(html);
-    if(clean) document.execCommand('insertHTML', false, clean);
-    else if(text) document.execCommand('insertText', false, text);
+    // Interner Copy (aus dem WebEditor selbst): Bilder/Anker intakt lassen
+    const isInternal = html.includes('img-wrap') || html.includes('anchor-mark');
+    if(isInternal){
+      document.execCommand('insertHTML', false, html);
+    } else {
+      // Alles andere (Word, Google Docs, Webseiten, etc.) immer bereinigen
+      const clean = cleanPastedHTML(html);
+      if(clean) document.execCommand('insertHTML', false, clean);
+      else if(text) document.execCommand('insertText', false, text);
+      showSaved('Eingefügt – Formatierungen wurden bereinigt.');
+    }
     debouncedCodeSync();
-    showSaved('Eingefügt – Formatierungen wurden bereinigt.');
+    return;
   }
-  // Sonst: normales Einfügen (z.B. innerhalb des Editors kopiert)
+  // Nur Plaintext (kein HTML): direkt einfügen
+  if(text){
+    e.preventDefault();
+    document.execCommand('insertText', false, text);
+    debouncedCodeSync();
+  }
 });
 
 // ════════════════════════════════════════════════════════════
@@ -2515,6 +2602,7 @@ try {
   init();
 } catch(e) {
   console.error('WebEditor init Fehler:', e);
+  // Fallback: show default page manually
   try {
     document.getElementById('editor-content').innerHTML =
       '<h1>Meine erste Webseite</h1><p>Hier kannst du deinen Text schreiben.</p>';
@@ -2522,34 +2610,6 @@ try {
   } catch(e2) {}
 }
 setTimeout(markSaved, 500);
-
-// ── ALLE UI-FUNKTIONEN EXPLIZIT GLOBAL VERFÜGBAR MACHEN ────────
-// Sicherheitsnetz: auch wenn der Browser Scope-Probleme hat,
-// sind alle Funktionen über window.funcName erreichbar.
-(function bindGlobals(){
-  var fns = [
-    addPage, confirmAddPage, deletePage, openRenamePage, confirmRenamePage,
-    setView, insertLink, switchLinkTab, confirmLink, updatePageAnchorSelect,
-    insertAnchor, confirmAnchor, insertTable, confirmTable,
-    insertImagePrompt, confirmImage, switchImgTab, handlePasteInZone,
-    previewImgUrl, previewImgFile, insertImgSrc, imgUrlOk, imgUrlErr,
-    applyWrap, applyImgSize, applyImgPos, imgUndo, deleteSelectedImg,
-    applyImgOpacity, applyImgRadius,
-    applyPageBg, toggleSymbolPicker, applyFontSizePt, applyLineSpacing,
-    applyStyle, execCmd, saveSelection, restoreSelection, insertHR,
-    updateForeColor, applyForeColor, updateBgColor, applyBgColor, removeHighlight,
-    applyTableBorderColor, applyTableBorderVisible, applyTableBorderWidth,
-    tableAddRow, tableRemoveRow, tableAddCol, tableRemoveCol, applyTableCellBg,
-    openModal, closeModal,
-    openLinkEditor, openLinkInNewTab, hideLinkTooltip, confirmEditLink, removeCurrentLink,
-    updateFilenamePreview, sanitizeFilename, confirmFilename, askFilename,
-    updateStatus, showSaved, loadProjectClick, loadProject,
-    saveProject, downloadCurrentHTML
-  ];
-  fns.forEach(function(fn){
-    if(typeof fn === 'function' && fn.name) window[fn.name] = fn;
-  });
-})();
 </script>
 </body>
 </html>
