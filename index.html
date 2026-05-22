@@ -15,7 +15,7 @@
   body { font-family:'Nunito',sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
   /* HEADER */
-  header { background:linear-gradient(90deg,var(--accent2),var(--accent)); color:#fff; padding:0 20px; height:52px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 12px rgba(67,97,238,.25); flex-shrink:0; z-index:100; }
+  header { background:linear-gradient(90deg,var(--accent2),var(--accent)); color:#fff; padding:0 20px; height:52px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 12px rgba(67,97,238,.25); flex-shrink:0; z-index:1100; position:relative; }
   header .logo { font-size:1.3rem; font-weight:800; display:flex; align-items:center; gap:8px; }
   header .logo span { color:var(--yellow); }
   header .tagline { font-size:.78rem; opacity:.75; border-left:1px solid rgba(255,255,255,.3); padding-left:14px; }
@@ -24,7 +24,7 @@
   header button.hbtn:hover { background:rgba(255,255,255,.28); }
 
   /* TOOLBAR */
-  #toolbar { background:var(--surface); border-bottom:1.5px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+  #toolbar { background:var(--surface); border-bottom:1.5px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; position:relative; z-index:1050; }
   .tb-row { padding:5px 12px; display:flex; align-items:center; gap:3px; overflow-x:auto; }
   .tb-row:first-child { border-bottom:1px solid var(--surface2); }
   .tb-sep { width:1px; height:22px; background:var(--border); margin:0 3px; flex-shrink:0; }
@@ -1413,7 +1413,8 @@ function positionTablePanel(table){
   const r=table.getBoundingClientRect();
   let left=r.right+12; if(left+254>window.innerWidth) left=r.left-258;
   left=Math.max(4,left);
-  let top=Math.max(60,Math.min(r.top,window.innerHeight-300));
+  // Mindestens 160px von oben (unter Header + Toolbar + Formatleiste)
+  let top=Math.max(160,Math.min(r.top,window.innerHeight-300));
   panel.style.left=left+'px'; panel.style.top=top+'px';
 }
 function rgbToHex(rgb){
