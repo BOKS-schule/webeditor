@@ -223,9 +223,9 @@
   <div class="logo">🌐 <span>Web</span>Editor</div>
   <div class="tagline">Mein erster HTML-Editor · Klasse 7</div>
   <div class="spacer"></div>
-  <button class="hbtn" onclick="saveProject()">💾 Speichern</button>
-  <button class="hbtn" onclick="loadProjectClick()">📂 Laden</button>
-  <button class="hbtn" onclick="downloadCurrentHTML()">⬇️ HTML</button>
+  <button class="hbtn" onclick="(function(){saveCurrentPageContent();const d={version:EDITOR_VERSION,pages,currentPageId,pageIdCounter};const j=JSON.stringify(d);const b=new Blob([j],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(pages.find(p=>p.id===currentPageId)?.name||'projekt').replace(/[^a-z0-9äöüß_-]/gi,'_')+'.json';a.click();URL.revokeObjectURL(a.href);markSaved();showSaved('Gespeichert!');})()">💾 Speichern</button>
+  <button class="hbtn" onclick="document.getElementById('load-input').click()">📂 Laden</button>
+  <button class="hbtn" onclick="(function(){const p=pages.find(x=>x.id===currentPageId);if(!p)return;saveCurrentPageContent();const bg=p.bgColor||'#ffffff';const css='body{font-family:Arial,sans-serif;padding:24px 36px;line-height:1.7;color:#222;position:relative;margin:0;background:'+bg+';}';const html='<!DOCTYPE html><html lang=\'de\'><head><meta charset=\'UTF-8\'><title>'+p.name+'</title><style>'+css+'</style></head><body>'+p.content+'</body></html>';const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=p.name.replace(/[^a-z0-9äöüß_-]/gi,'_')+'.html';a.click();URL.revokeObjectURL(a.href);})()">⬇️ HTML</button>
   <input type="file" id="load-input" accept=".json" style="display:none" onchange="loadProject(event)">
 </header>
 
