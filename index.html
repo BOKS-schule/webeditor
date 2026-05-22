@@ -2515,7 +2515,6 @@ try {
   init();
 } catch(e) {
   console.error('WebEditor init Fehler:', e);
-  // Fallback: show default page manually
   try {
     document.getElementById('editor-content').innerHTML =
       '<h1>Meine erste Webseite</h1><p>Hier kannst du deinen Text schreiben.</p>';
@@ -2523,6 +2522,34 @@ try {
   } catch(e2) {}
 }
 setTimeout(markSaved, 500);
+
+// ── ALLE UI-FUNKTIONEN EXPLIZIT GLOBAL VERFÜGBAR MACHEN ────────
+// Sicherheitsnetz: auch wenn der Browser Scope-Probleme hat,
+// sind alle Funktionen über window.funcName erreichbar.
+(function bindGlobals(){
+  var fns = [
+    addPage, confirmAddPage, deletePage, openRenamePage, confirmRenamePage,
+    setView, insertLink, switchLinkTab, confirmLink, updatePageAnchorSelect,
+    insertAnchor, confirmAnchor, insertTable, confirmTable,
+    insertImagePrompt, confirmImage, switchImgTab, handlePasteInZone,
+    previewImgUrl, previewImgFile, insertImgSrc, imgUrlOk, imgUrlErr,
+    applyWrap, applyImgSize, applyImgPos, imgUndo, deleteSelectedImg,
+    applyImgOpacity, applyImgRadius,
+    applyPageBg, toggleSymbolPicker, applyFontSizePt, applyLineSpacing,
+    applyStyle, execCmd, saveSelection, restoreSelection, insertHR,
+    updateForeColor, applyForeColor, updateBgColor, applyBgColor, removeHighlight,
+    applyTableBorderColor, applyTableBorderVisible, applyTableBorderWidth,
+    tableAddRow, tableRemoveRow, tableAddCol, tableRemoveCol, applyTableCellBg,
+    openModal, closeModal,
+    openLinkEditor, openLinkInNewTab, hideLinkTooltip, confirmEditLink, removeCurrentLink,
+    updateFilenamePreview, sanitizeFilename, confirmFilename, askFilename,
+    updateStatus, showSaved, loadProjectClick, loadProject,
+    saveProject, downloadCurrentHTML
+  ];
+  fns.forEach(function(fn){
+    if(typeof fn === 'function' && fn.name) window[fn.name] = fn;
+  });
+})();
 </script>
 </body>
 </html>
