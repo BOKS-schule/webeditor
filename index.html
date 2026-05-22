@@ -79,7 +79,7 @@
   #editor-content h1 { font-size:2em; margin:.4em 0; }
   #editor-content h2 { font-size:1.5em; margin:.4em 0; }
   #editor-content h3 { font-size:1.2em; margin:.4em 0; }
-  #editor-content p  { margin:.4em 0; }
+  #editor-content p  { margin:.15em 0; }
   #editor-content ul,#editor-content ol { margin:.4em 0 .4em 1.8em; }
   #editor-content table { border-collapse:collapse; width:100%; margin:.5em 0; }
   #editor-content table td,#editor-content table th { border:1.5px solid #c8d4f0; padding:6px 10px; }
@@ -260,6 +260,16 @@
       <option value="48">48 pt</option>
       <option value="72">72 pt</option>
     </select>
+    <select class="tb-select" id="sel-linespacing" title="Zeilenabstand"
+      onchange="applyLineSpacing(this.value);">
+      <option value="" disabled selected>Abstand…</option>
+      <option value="1.0">1,0 – Eng</option>
+      <option value="1.2">1,2</option>
+      <option value="1.5" selected>1,5 – Normal</option>
+      <option value="1.7">1,7</option>
+      <option value="2.0">2,0 – Weit</option>
+      <option value="2.5">2,5</option>
+    </select>
     <div class="tb-sep"></div>
     <button class="tb-btn" id="btn-bold"      onclick="execCmd('bold')"><b>B</b></button>
     <button class="tb-btn" id="btn-italic"    onclick="execCmd('italic')"><i>I</i></button>
@@ -291,6 +301,7 @@
         style="width:22px;height:28px;border:1px solid var(--border);border-left:none;border-radius:0 6px 6px 0;cursor:pointer;padding:1px 2px;flex-shrink:0;"
         oninput="updateBgColor(this.value)" onchange="updateBgColor(this.value)">
     </div>
+    <button class="tb-btn" onclick="removeHighlight()" title="Hintergrundfarbe entfernen" style="font-size:.75rem;">✕ Markierung</button>
     <div class="tb-sep"></div>
     <button class="tb-btn" onclick="execCmd('justifyLeft')">⬅</button>
     <button class="tb-btn" onclick="execCmd('justifyCenter')">⬌</button>
@@ -344,6 +355,10 @@
   <span class="fi-sep">·</span>
   <span class="fi"><span class="fi-label">Farbe:</span>
     <span id="fi-color" style="display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid #ccc;vertical-align:middle;"></span>
+  </span>
+  <span class="fi-sep">·</span>
+  <span class="fi" style="margin-left:auto;opacity:.6;font-style:italic;font-size:.68rem;">
+    Tipp: Shift+Enter = Zeilenumbruch ohne Abstand
   </span>
 </div>
 
@@ -423,45 +438,63 @@
   background:#fff; border:1px solid var(--border);
   border-radius:12px; box-shadow:0 8px 32px rgba(67,97,238,.18);
   padding:12px 14px; display:none; flex-direction:column;
-  gap:10px; width:240px; font-size:.82rem;
+  gap:10px; width:250px; font-size:.82rem;
 ">
   <div style="font-size:.78rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">⊞ Tabelle formatieren</div>
   <div class="ip-sep" style="height:1px;background:var(--border);"></div>
+
+  <!-- Zeilen & Spalten -->
   <div>
-    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Rahmenfarbe</div>
-    <div style="display:flex;align-items:center;gap:8px;">
+    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Zeilen &amp; Spalten</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+      <button onclick="tableAddRow()"    style="padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text2);">+ Zeile</button>
+      <button onclick="tableRemoveRow()" style="padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text2);">− Zeile</button>
+      <button onclick="tableAddCol()"    style="padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text2);">+ Spalte</button>
+      <button onclick="tableRemoveCol()" style="padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text2);">− Spalte</button>
+    </div>
+    <div style="font-size:.7rem;color:var(--text2);margin-top:4px;font-style:italic;">
+      Zeile wird an aktueller Cursorposition eingefügt / entfernt
+    </div>
+  </div>
+  <div class="ip-sep" style="height:1px;background:var(--border);"></div>
+
+  <!-- Hintergrundfarbe -->
+  <div>
+    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Zellen-Hintergrundfarbe</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+      <input type="color" id="tbl-bg-color" value="#ffffff"
+        style="width:34px;height:28px;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;padding:1px;">
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <button onclick="applyTableCellBg(document.getElementById('tbl-bg-color').value,'current')"
+          style="padding:4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;color:var(--text2);">Aktuelle Zelle</button>
+        <button onclick="applyTableCellBg(document.getElementById('tbl-bg-color').value,'all')"
+          style="padding:4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;color:var(--text2);">Alle Zellen</button>
+      </div>
+    </div>
+    <button onclick="applyTableCellBg('transparent','all')"
+      style="width:100%;padding:4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;color:var(--text2);">Hintergrund entfernen</button>
+  </div>
+  <div class="ip-sep" style="height:1px;background:var(--border);"></div>
+
+  <!-- Rahmen -->
+  <div>
+    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Rahmen</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
       <input type="color" id="tbl-border-color" value="#cccccc"
         style="width:34px;height:28px;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;padding:1px;"
         oninput="applyTableBorderColor(this.value)">
-      <span style="font-size:.75rem;color:var(--text2);">Farbe wählen</span>
+      <span style="font-size:.74rem;color:var(--text2);">Rahmenfarbe</span>
     </div>
-  </div>
-  <div>
-    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Rahmen-Sichtbarkeit</div>
-    <div style="display:flex;gap:6px;">
-      <button onclick="applyTableBorderVisible(false)"
-        style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);
-               background:var(--surface2);font-family:inherit;font-size:.78rem;
-               font-weight:700;cursor:pointer;color:var(--text2);"
-        title="Ränder unsichtbar machen">
-        ◻ Kein Rahmen
-      </button>
-      <button onclick="applyTableBorderVisible(true)"
-        style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);
-               background:var(--surface2);font-family:inherit;font-size:.78rem;
-               font-weight:700;cursor:pointer;color:var(--text2);"
-        title="Standard-Ränder wiederherstellen">
-        ◼ Rahmen zeigen
-      </button>
+    <div style="display:flex;gap:5px;margin-bottom:5px;">
+      <button onclick="applyTableBorderVisible(false)" style="flex:1;padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;color:var(--text2);">Kein Rahmen</button>
+      <button onclick="applyTableBorderVisible(true)"  style="flex:1;padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;color:var(--text2);">Rahmen zeigen</button>
     </div>
-  </div>
-  <div>
-    <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px;">Rahmenbreite</div>
     <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:.73rem;color:var(--text2);white-space:nowrap;">Breite</span>
       <input type="range" id="tbl-border-width" min="0" max="8" value="1" step="1"
         style="flex:1;accent-color:var(--accent);cursor:pointer;"
-        oninput="applyTableBorderWidth(this.value); document.getElementById('tbl-border-width-val').textContent=this.value+'px'">
-      <span id="tbl-border-width-val" style="font-size:.75rem;color:var(--accent2);font-family:'JetBrains Mono',monospace;min-width:28px;">1px</span>
+        oninput="applyTableBorderWidth(this.value);document.getElementById('tbl-border-width-val').textContent=this.value+'px'">
+      <span id="tbl-border-width-val" style="font-size:.74rem;color:var(--accent2);font-family:'JetBrains Mono',monospace;min-width:28px;">1px</span>
     </div>
   </div>
 </div>
@@ -625,8 +658,7 @@
       <input type="text" id="img-url" placeholder="https://upload.wikimedia.org/…/bild.jpg"
         oninput="previewImgUrl()" style="margin-bottom:8px;">
       <div id="img-url-preview" style="display:none;margin-bottom:12px;text-align:center;background:var(--surface2);border-radius:8px;padding:8px;min-height:80px;">
-        <img id="img-url-preview-img" src="" alt="" style="max-width:100%;max-height:150px;border-radius:6px;"
-          onload="imgUrlOk()" onerror="imgUrlErr()">
+        <img id="img-url-preview-img" src="" alt="" style="max-width:100%;max-height:150px;border-radius:6px;">
         <div id="img-url-status" style="font-size:.78rem;margin-top:6px;"></div>
       </div>
     </div>
@@ -1413,6 +1445,125 @@ function applyTableBorderWidth(width){
   debouncedCodeSync();
 }
 
+// ── TABELLE: ZEILEN & SPALTEN ──────────────────────────────────
+function getCurrentTableRow(){
+  const sel=window.getSelection();
+  if(!sel||!sel.rangeCount) return null;
+  let node=sel.getRangeAt(0).startContainer;
+  while(node&&node.tagName!=='TR') node=node.parentElement;
+  return (node&&node.tagName==='TR'&&selTable&&selTable.contains(node))?node:null;
+}
+
+function tableAddRow(){
+  if(!selTable) return;
+  const curRow=getCurrentTableRow();
+  const refRow=curRow||selTable.rows[selTable.rows.length-1];
+  if(!refRow) return;
+  const newRow=document.createElement('tr');
+  for(let i=0;i<refRow.cells.length;i++){
+    const td=document.createElement('td');
+    // Copy cell style from reference row
+    td.style.cssText=refRow.cells[i].style.cssText;
+    td.innerHTML='&nbsp;';
+    newRow.appendChild(td);
+  }
+  // Insert after current row
+  refRow.parentNode.insertBefore(newRow, refRow.nextSibling);
+  debouncedCodeSync();
+}
+
+function tableRemoveRow(){
+  if(!selTable) return;
+  if(selTable.rows.length<=1){alert('Die Tabelle muss mindestens eine Zeile haben.');return;}
+  const curRow=getCurrentTableRow()||selTable.rows[selTable.rows.length-1];
+  curRow.remove();
+  debouncedCodeSync();
+}
+
+function tableAddCol(){
+  if(!selTable) return;
+  Array.from(selTable.rows).forEach(row=>{
+    const td=document.createElement(row.cells[0]&&row.cells[0].tagName==='TH'?'th':'td');
+    const lastCell=row.cells[row.cells.length-1];
+    if(lastCell) td.style.cssText=lastCell.style.cssText;
+    td.innerHTML='&nbsp;';
+    row.appendChild(td);
+  });
+  debouncedCodeSync();
+}
+
+function tableRemoveCol(){
+  if(!selTable) return;
+  const rows=Array.from(selTable.rows);
+  if(!rows.length||rows[0].cells.length<=1){alert('Die Tabelle muss mindestens eine Spalte haben.');return;}
+  rows.forEach(row=>{ if(row.cells.length>0) row.deleteCell(row.cells.length-1); });
+  debouncedCodeSync();
+}
+
+// ── ZELLEN-HINTERGRUNDFARBE ───────────────────────────────────
+function applyTableCellBg(color, target){
+  if(!selTable) return;
+  if(target==='all'){
+    selTable.querySelectorAll('td,th').forEach(c=>c.style.backgroundColor=color);
+  } else {
+    // Current cell
+    const sel=window.getSelection();
+    if(sel&&sel.rangeCount){
+      let node=sel.getRangeAt(0).startContainer;
+      while(node&&node.tagName!=='TD'&&node.tagName!=='TH') node=node.parentElement;
+      if(node&&(node.tagName==='TD'||node.tagName==='TH')) node.style.backgroundColor=color;
+    }
+  }
+  debouncedCodeSync();
+}
+
+// ── PASTE-BEREINIGUNG ─────────────────────────────────────────
+// Entfernt alle Format-Informationen beim Einfügen aus externen Quellen
+function cleanPastedHTML(html){
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html;
+
+  // Microsoft Office / Word spezifische Elemente komplett entfernen
+  tmp.querySelectorAll('style,meta,link,script').forEach(el=>el.remove());
+  // Word-Tags (o:p, w:*, m:*, etc.)
+  tmp.querySelectorAll('*').forEach(el=>{
+    if(el.tagName&&el.tagName.includes(':')) el.remove();
+  });
+
+  // Tags, die wir BEHALTEN wollen (ohne Attribute)
+  const keepTags=new Set(['b','i','u','strong','em','s','sub','sup',
+    'p','br','h1','h2','h3','h4','h5','h6',
+    'ul','ol','li','table','thead','tbody','tr','td','th','a','img']);
+
+  function clean(node){
+    if(node.nodeType===3) return; // Textknoten behalten
+    if(node.nodeType!==1){ node.remove(); return; }
+    // Kinder zuerst verarbeiten
+    Array.from(node.childNodes).forEach(clean);
+    const tag=node.tagName.toLowerCase();
+    if(!keepTags.has(tag)){
+      // Unerwünschtes Tag: nur Inhalt behalten
+      const parent=node.parentNode;
+      if(parent){
+        while(node.firstChild) parent.insertBefore(node.firstChild,node);
+        parent.removeChild(node);
+      }
+    } else {
+      // Alle Attribute entfernen – nur bei <a> href/target behalten, bei <img> src/alt
+      const allowed=tag==='a'?['href','target']:tag==='img'?['src','alt']:[];
+      Array.from(node.attributes).forEach(attr=>{
+        if(!allowed.includes(attr.name)) node.removeAttribute(attr.name);
+      });
+    }
+  }
+  Array.from(tmp.childNodes).forEach(clean);
+  // Leere Paragraphen aufräumen
+  tmp.querySelectorAll('p,h1,h2,h3,li').forEach(el=>{
+    if(!el.textContent.trim()&&!el.querySelector('img,br')) el.remove();
+  });
+  return tmp.innerHTML||'';
+}
+
 function setupFormatBar(){
   const ec=document.getElementById('editor-content');
   ec.addEventListener('keyup',   updateFormatBar);
@@ -1501,7 +1652,49 @@ function insertHR(){document.getElementById('editor-content').focus();document.e
 // ════════════════════════════════════════════════════════════
 //  INSERT IMAGE
 // ════════════════════════════════════════════════════════════
-// ── PAGE BACKGROUND COLOR ──────────────────────────────────────
+// Apply line spacing to current paragraph / selection
+function applyLineSpacing(val){
+  if(!val) return;
+  const lh = parseFloat(val);
+  const ec = document.getElementById('editor-content');
+  ec.focus();
+  const sel = window.getSelection();
+  if(!sel || !sel.rangeCount) return;
+
+  // Find all block-level elements in the selection (or just the current paragraph)
+  const range = sel.getRangeAt(0);
+  const blockTags = ['P','H1','H2','H3','H4','LI','BLOCKQUOTE','DIV'];
+
+  // Collect affected paragraphs
+  const affected = new Set();
+  let node = range.startContainer;
+  while(node && node !== ec){
+    if(blockTags.includes(node.tagName)) { affected.add(node); break; }
+    node = node.parentElement;
+  }
+  // If selection spans multiple blocks
+  if(!sel.isCollapsed){
+    const walker = document.createTreeWalker(ec, NodeFilter.SHOW_ELEMENT);
+    while(walker.nextNode()){
+      const n = walker.currentNode;
+      if(blockTags.includes(n.tagName) && range.intersectsNode(n)) affected.add(n);
+    }
+  }
+  if(!affected.size){
+    // Fallback: apply to whole editor
+    ec.style.lineHeight = val;
+  } else {
+    affected.forEach(el => {
+      el.style.lineHeight = val;
+      // Also reduce margin for tight spacing
+      el.style.marginTop    = lh <= 1.2 ? '0' : '';
+      el.style.marginBottom = lh <= 1.2 ? '0' : '';
+    });
+  }
+  // Update dropdown to reflect current value
+  document.getElementById('sel-linespacing').value = val;
+  debouncedCodeSync();
+}
 function applyPageBg(color){
   document.getElementById('editor-content').style.background = color;
   // Store in page metadata so it's exported correctly
@@ -1590,6 +1783,40 @@ function applyBgColor(){
   execCmd('hiliteColor', _bgColor);
 }
 
+// Entfernt background-color aus allen Spans in der aktuellen Auswahl
+function removeHighlight(){
+  const ec = document.getElementById('editor-content');
+  ec.focus();
+  const sel = window.getSelection();
+  if(!sel || !sel.rangeCount) return;
+
+  if(sel.isCollapsed){
+    // Kein Text markiert → gesamten Editor bereinigen
+    if(!confirm('Kein Text markiert. Hintergrundfarbe aus dem gesamten Text entfernen?')) return;
+    ec.querySelectorAll('[style]').forEach(el => {
+      el.style.backgroundColor = '';
+      if(!el.getAttribute('style').trim() || el.getAttribute('style') === ';')
+        el.removeAttribute('style');
+    });
+  } else {
+    // Nur im markierten Bereich: background transparent setzen
+    document.execCommand('hiliteColor', false, 'transparent');
+    // Zusätzlich inline background-color aus Spans im Range entfernen
+    const range = sel.getRangeAt(0);
+    const walker = document.createTreeWalker(ec, NodeFilter.SHOW_ELEMENT);
+    while(walker.nextNode()){
+      const n = walker.currentNode;
+      if(range.intersectsNode(n) && n.style && n.style.backgroundColor){
+        n.style.backgroundColor = '';
+        if(!n.getAttribute('style') || n.getAttribute('style').replace(/;/g,'').trim() === '')
+          n.removeAttribute('style');
+      }
+    }
+  }
+  debouncedCodeSync();
+  showSaved('Hintergrundfarbe entfernt.');
+}
+
 // ── IMAGE MODAL ────────────────────────────────────────────────
 let _imgTab = 'file';
 let _pastedSrc = null;
@@ -1636,6 +1863,9 @@ function previewImgUrl(){
   status.textContent='⏳ Lade Vorschau…';
   status.style.color='var(--text2)';
   img.style.display='none';
+  // Handler programmatisch setzen (kein HTML-Attribut-Scope-Problem)
+  img.onload  = imgUrlOk;
+  img.onerror = imgUrlErr;
   clearTimeout(_imgUrlTimer);
   _imgUrlTimer = setTimeout(()=>{ img.src=url; img.style.display='block'; }, 600);
 }
@@ -1707,32 +1937,57 @@ function insertImgSrc(src, alt){
   selectImgWrap(wrap);
 }
 
-// Paste direkt im Editor: Strg+V mit Bild in der Zwischenablage
+// Paste direkt im Editor: Bilder abfangen + externen Text bereinigen
 document.getElementById('editor-content').addEventListener('paste', e=>{
   const items = e.clipboardData?.items;
-  if(!items) return;
-  for(let item of items){
-    if(item.type.startsWith('image/')){
-      e.preventDefault();
-      const file = item.getAsFile();
-      const r = new FileReader();
-      r.onload = ev => {
-        const wrap = makeImgWrap(ev.target.result, '', 280, 'inline');
-        const sel = window.getSelection();
-        if(sel.rangeCount){
-          const range = sel.getRangeAt(0);
-          range.collapse(false); range.insertNode(wrap);
-          range.setStartAfter(wrap); range.collapse(true);
-          sel.removeAllRanges(); sel.addRange(range);
-        } else { document.getElementById('editor-content').appendChild(wrap); }
-        selectImgWrap(wrap);
-        debouncedCodeSync();
-        showSaved('Bild eingefügt – klicke darauf zum Bearbeiten!');
-      };
-      r.readAsDataURL(file);
-      return;
+
+  // 1. Bild in Zwischenablage? als img-wrap einfuegen
+  if(items){
+    for(let item of items){
+      if(item.type.startsWith('image/')){
+        e.preventDefault();
+        const file=item.getAsFile();
+        const r=new FileReader();
+        r.onload=ev=>{
+          const wrap=makeImgWrap(ev.target.result,'',280,'inline');
+          const sel=window.getSelection();
+          if(sel.rangeCount){
+            const range=sel.getRangeAt(0);
+            range.collapse(false); range.insertNode(wrap);
+            range.setStartAfter(wrap); range.collapse(true);
+            sel.removeAllRanges(); sel.addRange(range);
+          } else { document.getElementById('editor-content').appendChild(wrap); }
+          selectImgWrap(wrap);
+          debouncedCodeSync();
+          showSaved('Bild eingefügt – klicke darauf zum Bearbeiten!');
+        };
+        r.readAsDataURL(file);
+        return;
+      }
     }
   }
+
+  // 2. Text/HTML aus externen Quellen bereinigen
+  const html = e.clipboardData?.getData('text/html') || '';
+  const text = e.clipboardData?.getData('text/plain') || '';
+
+  // Externe Quelle erkennen: enthaelt Formatierungsattribute oder Word-Kennzeichen
+  const isExternal = html && (
+    html.includes('style=') || html.includes('class=') ||
+    html.includes('<!--[if') || html.includes('mso-') ||
+    html.includes('font-family') || html.includes('xmlns') ||
+    html.includes('color:') || html.includes('font-size')
+  );
+
+  if(isExternal){
+    e.preventDefault();
+    const clean = cleanPastedHTML(html);
+    if(clean) document.execCommand('insertHTML', false, clean);
+    else if(text) document.execCommand('insertText', false, text);
+    debouncedCodeSync();
+    showSaved('Eingefügt – Formatierungen wurden bereinigt.');
+  }
+  // Sonst: normales Einfügen (z.B. innerhalb des Editors kopiert)
 });
 
 // ════════════════════════════════════════════════════════════
