@@ -226,7 +226,48 @@
   <button class="hbtn" onclick="(function(){saveCurrentPageContent();const d={version:EDITOR_VERSION,pages,currentPageId,pageIdCounter};const j=JSON.stringify(d);const b=new Blob([j],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(pages.find(p=>p.id===currentPageId)?.name||'projekt').replace(/[^a-z0-9äöüß_-]/gi,'_')+'.json';a.click();URL.revokeObjectURL(a.href);markSaved();showSaved('Gespeichert!');})()">💾 Speichern</button>
   <button class="hbtn" onclick="document.getElementById('load-input').click()">📂 Laden</button>
   <button class="hbtn" onclick="(function(){const p=pages.find(x=>x.id===currentPageId);if(!p)return;saveCurrentPageContent();const bg=p.bgColor||'#ffffff';const css='body{font-family:Arial,sans-serif;padding:24px 36px;line-height:1.7;color:#222;position:relative;margin:0;background:'+bg+';}';const html='<!DOCTYPE html><html lang=\'de\'><head><meta charset=\'UTF-8\'><title>'+p.name+'</title><style>'+css+'</style></head><body>'+p.content+'</body></html>';const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=p.name.replace(/[^a-z0-9äöüß_-]/gi,'_')+'.html';a.click();URL.revokeObjectURL(a.href);})()">⬇️ HTML</button>
-  <input type="file" id="load-input" accept=".json" style="display:none" onchange="loadProject(event)">
+  <input type="file" id="load-input" accept=".json" style="display:none" onchange="
+    (function(e){
+      const file=e.target.files[0]; if(!file) return;
+      const r=new FileReader();
+      r.onload=function(ev){
+        try{
+          const d=JSON.parse(ev.target.result);
+          const fv=d.version||1;
+          if(fv<2){
+            d.pages=d.pages.map(function(p){
+              const tmp=document.createElement('div');
+              tmp.innerHTML=p.content;
+              tmp.querySelectorAll('img:not(.img-wrap img)').forEach(function(img){
+                if(!img.closest('.img-wrap')){
+                  const w=document.createElement('span');
+                  w.className='img-wrap'; w.setAttribute('data-wrap','inline');
+                  w.setAttribute('contenteditable','false');
+                  const wp=img.style.width?parseInt(img.style.width):(img.width||240);
+                  w.style.width=(isNaN(wp)||wp<20?240:wp)+'px';
+                  img.style.width=''; img.style.maxWidth=''; img.style.display='block';
+                  img.draggable=false; img.parentNode.insertBefore(w,img); w.appendChild(img);
+                  ['nw','n','ne','e','se','s','sw','w'].forEach(function(dir){
+                    const h=document.createElement('span'); h.className='rh '+dir;
+                    h.setAttribute('data-dir',dir); w.appendChild(h);
+                  });
+                }
+              });
+              return Object.assign({},p,{content:tmp.innerHTML});
+            });
+          }
+          if(typeof loadProject==='function') loadProject(e);
+          else {
+            pages=d.pages; currentPageId=d.currentPageId;
+            pageIdCounter=d.pageIdCounter||(d.pages.length+1);
+            renderPageList(); loadPageIntoEditor(currentPageId);
+            markSaved(); showSaved('Projekt geladen!');
+          }
+        }catch(err){ alert('Fehler beim Laden: '+err.message); }
+      };
+      r.readAsText(file); e.target.value='';
+    })(event)
+  ">
 </header>
 
 <div id="toolbar">
@@ -2470,8 +2511,18 @@ setInterval(()=>{
   try{sessionStorage.setItem('webeditor_backup',JSON.stringify({version:EDITOR_VERSION,pages,currentPageId,pageIdCounter}));}catch{}
 },10000);
 
-init();
-setTimeout(markSaved, 500); // Snapshot nach Init erstellen (kurze Pause damit alles geladen ist)
+try {
+  init();
+} catch(e) {
+  console.error('WebEditor init Fehler:', e);
+  // Fallback: show default page manually
+  try {
+    document.getElementById('editor-content').innerHTML =
+      '<h1>Meine erste Webseite</h1><p>Hier kannst du deinen Text schreiben.</p>';
+    document.getElementById('stat-page').textContent = 'Startseite';
+  } catch(e2) {}
+}
+setTimeout(markSaved, 500);
 </script>
 </body>
 </html>
