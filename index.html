@@ -225,7 +225,7 @@
   <div class="spacer"></div>
   <button class="hbtn" onclick="saveProject()">💾 Speichern</button>
   <button class="hbtn" onclick="document.getElementById('load-input').click()">📂 Laden</button>
-  <button class="hbtn" onclick="(function(){const p=pages.find(x=>x.id===currentPageId);if(!p)return;saveCurrentPageContent();const bg=p.bgColor||'#ffffff';const css='body{font-family:Arial,sans-serif;padding:24px 36px;line-height:1.7;color:#222;position:relative;margin:0;background:'+bg+';}';const html='<!DOCTYPE html><html lang=\'de\'><head><meta charset=\'UTF-8\'><title>'+p.name+'</title><style>'+css+'</style></head><body>'+p.content+'</body></html>';const a=document.createElement('a');a.href='data:text/html;charset=utf-8,'+encodeURIComponent(html);a.download=p.name.replace(/[^a-z0-9äöüß_-]/gi,'_')+'.html';document.body.appendChild(a);a.click();document.body.removeChild(a);})()">⬇️ HTML</button>
+  <button class="hbtn" onclick="downloadCurrentHTML()">⬇️ HTML</button>
   <input type="file" id="load-input" accept=".json" style="display:none" onchange="loadProject(event)">
 </header>
 
