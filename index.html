@@ -223,9 +223,9 @@
   <div class="logo">🌐 <span>Web</span>Editor</div>
   <div class="tagline">Mein erster HTML-Editor · Klasse 7</div>
   <div class="spacer"></div>
-  <button class="hbtn" onclick="(function(){saveCurrentPageContent();const d={version:EDITOR_VERSION,pages,currentPageId,pageIdCounter};const j=JSON.stringify(d);const b=new Blob([j],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(pages.find(p=>p.id===currentPageId)?.name||'projekt').replace(/[^a-z0-9äöüß_-]/gi,'_')+'.json';a.click();URL.revokeObjectURL(a.href);markSaved();showSaved('Gespeichert!');})()">💾 Speichern</button>
+  <button class="hbtn" onclick="(function(){saveCurrentPageContent();const d={version:EDITOR_VERSION,pages,currentPageId,pageIdCounter};const j=JSON.stringify(d);const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(j);a.download=(pages.find(p=>p.id===currentPageId)?.name||'projekt').replace(/[^a-z0-9äöüß_-]/gi,'_')+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);markSaved();showSaved('Gespeichert!');})()">💾 Speichern</button>
   <button class="hbtn" onclick="document.getElementById('load-input').click()">📂 Laden</button>
-  <button class="hbtn" onclick="(function(){const p=pages.find(x=>x.id===currentPageId);if(!p)return;saveCurrentPageContent();const bg=p.bgColor||'#ffffff';const css='body{font-family:Arial,sans-serif;padding:24px 36px;line-height:1.7;color:#222;position:relative;margin:0;background:'+bg+';}';const html='<!DOCTYPE html><html lang=\'de\'><head><meta charset=\'UTF-8\'><title>'+p.name+'</title><style>'+css+'</style></head><body>'+p.content+'</body></html>';const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=p.name.replace(/[^a-z0-9äöüß_-]/gi,'_')+'.html';a.click();URL.revokeObjectURL(a.href);})()">⬇️ HTML</button>
+  <button class="hbtn" onclick="(function(){const p=pages.find(x=>x.id===currentPageId);if(!p)return;saveCurrentPageContent();const bg=p.bgColor||'#ffffff';const css='body{font-family:Arial,sans-serif;padding:24px 36px;line-height:1.7;color:#222;position:relative;margin:0;background:'+bg+';}';const html='<!DOCTYPE html><html lang=\'de\'><head><meta charset=\'UTF-8\'><title>'+p.name+'</title><style>'+css+'</style></head><body>'+p.content+'</body></html>';const a=document.createElement('a');a.href='data:text/html;charset=utf-8,'+encodeURIComponent(html);a.download=p.name.replace(/[^a-z0-9äöüß_-]/gi,'_')+'.html';document.body.appendChild(a);a.click();document.body.removeChild(a);})()">⬇️ HTML</button>
   <input type="file" id="load-input" accept=".json" style="display:none" onchange="loadProject(event)">
 </header>
 
@@ -358,7 +358,7 @@
     <span id="fi-color" style="display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid #ccc;vertical-align:middle;"></span>
   </span>
   <span class="fi-sep">·</span>
-  <span id="fi-table-hint" style="display:none;background:#fff8e8;border:1px solid #f4a261;border-radius:5px;padding:2px 8px;font-size:.72rem;font-weight:700;color:#7a4a00;">📊 Tabellen-Panel aktiv (rechts neben der Tabelle)</span>
+  <span id="fi-table-hint" style="display:none;background:#fff8e8;border:1px solid #f4a261;border-radius:5px;padding:2px 8px;font-size:.72rem;font-weight:700;color:#7a4a00;">📊 Tabellen-Panel aktiv – frei verschiebbar</span>
   <span class="fi" style="margin-left:auto;opacity:.6;font-style:italic;font-size:.68rem;">
     Tipp: Shift+Enter = Zeilenumbruch ohne Abstand
   </span>
@@ -439,10 +439,27 @@
   position:fixed; z-index:700;
   background:#fff; border:1px solid var(--border);
   border-radius:12px; box-shadow:0 8px 32px rgba(67,97,238,.18);
-  padding:12px 14px; display:none; flex-direction:column;
-  gap:10px; width:250px; font-size:.82rem;
+  padding:0; display:none; flex-direction:column;
+  gap:0; width:250px; font-size:.82rem;
 ">
-  <div style="font-size:.78rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">⊞ Tabelle formatieren</div>
+  <!-- Drag handle -->
+  <div id="table-panel-handle" style="
+    display:flex; align-items:center; gap:8px;
+    padding:9px 12px 8px;
+    background:linear-gradient(90deg,var(--accent2),var(--accent));
+    border-radius:11px 11px 0 0;
+    cursor:grab; user-select:none;
+  ">
+    <span style="font-size:.72rem; color:rgba(255,255,255,.7); letter-spacing:.12em; flex-shrink:0;">⠿⠿</span>
+    <span style="font-size:.78rem;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.06em;flex:1;">⊞ Tabelle formatieren</span>
+    <button onclick="hideTablePanel()" title="Schließen" style="
+      background:rgba(255,255,255,.2); border:none; color:#fff;
+      border-radius:5px; width:20px; height:20px; cursor:pointer;
+      font-size:.8rem; line-height:1; display:flex; align-items:center; justify-content:center;
+      flex-shrink:0;
+    ">✕</button>
+  </div>
+  <div style="padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
   <div class="ip-sep" style="height:1px;background:var(--border);"></div>
 
   <!-- Zeilen & Spalten -->
@@ -509,6 +526,7 @@
       <span id="tbl-border-width-val" style="font-size:.74rem;color:var(--accent2);font-family:'JetBrains Mono',monospace;min-width:28px;">1px</span>
     </div>
   </div>
+  </div><!-- end inner padding div -->
 </div>
 
 <div id="main">
@@ -1408,7 +1426,8 @@ function showTablePanel(table){
   selTable = table;
   const panel = document.getElementById('table-panel');
   panel.style.display = 'flex';
-  positionTablePanel(table);
+  // Only auto-position if user hasn't manually moved the panel
+  if(!panel._manuallyMoved) positionTablePanel(table);
   const firstCell = table.querySelector('td,th');
   if(firstCell){
     const cs = window.getComputedStyle(firstCell);
@@ -1425,7 +1444,10 @@ function showTablePanel(table){
   const hint = document.getElementById('fi-table-hint');
   if(hint) hint.style.display = '';
 }
-function hideTablePanel(){ selTable=null; document.getElementById('table-panel').style.display='none';
+function hideTablePanel(){ selTable=null;
+  const panel = document.getElementById('table-panel');
+  panel.style.display='none';
+  panel._manuallyMoved = false; // reset so next table auto-positions
   const hint = document.getElementById('fi-table-hint');
   if(hint) hint.style.display = 'none';
 }
@@ -1438,6 +1460,41 @@ function positionTablePanel(table){
   let top=Math.max(160,Math.min(r.top,window.innerHeight-300));
   panel.style.left=left+'px'; panel.style.top=top+'px';
 }
+
+// ── DRAGGABLE TABLE PANEL ────────────────────────────────────
+(function(){
+  const handle = document.getElementById('table-panel-handle');
+  const panel  = document.getElementById('table-panel');
+  let dragging = false, startX, startY, startLeft, startTop;
+
+  handle.addEventListener('mousedown', e => {
+    if(e.target.tagName === 'BUTTON') return; // don't drag on close btn
+    dragging = true;
+    handle.style.cursor = 'grabbing';
+    const rect = panel.getBoundingClientRect();
+    startX    = e.clientX;
+    startY    = e.clientY;
+    startLeft = rect.left;
+    startTop  = rect.top;
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if(!dragging) return;
+    let newLeft = startLeft + (e.clientX - startX);
+    let newTop  = startTop  + (e.clientY - startY);
+    // Keep within viewport
+    newLeft = Math.max(4, Math.min(newLeft, window.innerWidth  - panel.offsetWidth  - 4));
+    newTop  = Math.max(4, Math.min(newTop,  window.innerHeight - panel.offsetHeight - 4));
+    panel.style.left = newLeft + 'px';
+    panel.style.top  = newTop  + 'px';
+    panel._manuallyMoved = true;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if(dragging){ dragging = false; handle.style.cursor = 'grab'; }
+  });
+})();
 function rgbToHex(rgb){
   const m=rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
   if(!m) return null;
@@ -2360,8 +2417,7 @@ function saveProject(){
     default: 'webeditor-projekt',
     onConfirm: name => {
       const payload={version:EDITOR_VERSION,savedAt:new Date().toISOString(),currentPageId,pageIdCounter,pages};
-      const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name+'.json';a.click();
+      const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(payload,null,2));a.download=name+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);
       showSaved('Gespeichert: '+name+'.json');
     }
   });
@@ -2378,8 +2434,7 @@ function downloadCurrentHTML(){
     suffix:  '.html',
     default: defaultName,
     onConfirm: name => {
-      const blob=new Blob([document.getElementById('code-editor').value],{type:'text/html'});
-      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name+'.html';a.click();
+      const a=document.createElement('a');a.href='data:text/html;charset=utf-8,'+encodeURIComponent(document.getElementById('code-editor').value);a.download=name+'.html';document.body.appendChild(a);a.click();document.body.removeChild(a);
       showSaved('Heruntergeladen: '+name+'.html');
     }
   });
