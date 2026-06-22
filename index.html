@@ -2379,6 +2379,27 @@ ${interceptScript}
 // ════════════════════════════════════════════════════════════
 const EDITOR_VERSION = 2; // ← hier hochzählen bei strukturellen Änderungen
 
+// Datei-Download: Blob-URL als primäre Methode (keine Größenbeschränkung),
+// data:-URL nur als Fallback falls Blob durch Browser-Extension geblockt wird.
+function triggerDownload(content, filename, mimeType){
+  const a=document.createElement('a');
+  a.download=filename;
+  document.body.appendChild(a);
+  if(typeof URL!=='undefined' && typeof URL.createObjectURL==='function'){
+    const blob=new Blob([content],{type:mimeType});
+    const blobUrl=URL.createObjectURL(blob);
+    a.href=blobUrl;
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(blobUrl),30000);
+  } else {
+    // Fallback: data:-URL (nur für den Ausnahmefall, z.B. Extension-Eingriff)
+    a.href='data:'+mimeType+';charset=utf-8,'+encodeURIComponent(content);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
 function saveProject(){
   saveCurrentPageContent();
   askFilename({
@@ -2389,8 +2410,7 @@ function saveProject(){
     default: 'webeditor-projekt',
     onConfirm: name => {
       const payload={version:EDITOR_VERSION,savedAt:new Date().toISOString(),currentPageId,pageIdCounter,pages};
-      const j=JSON.stringify(payload,null,2);
-      const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(j);a.download=name+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);
+      triggerDownload(JSON.stringify(payload,null,2), name+'.json', 'application/json');
       showSaved('Gespeichert: '+name+'.json');
     }
   });
@@ -2407,14 +2427,75 @@ function downloadCurrentHTML(){
     suffix:  '.html',
     default: defaultName,
     onConfirm: name => {
-      const html=document.getElementById('code-editor').value;
-      const a=document.createElement('a');a.href='data:text/html;charset=utf-8,'+encodeURIComponent(html);a.download=name+'.html';document.body.appendChild(a);a.click();document.body.removeChild(a);
+      triggerDownload(document.getElementById('code-editor').value, name+'.html', 'text/html');
       showSaved('Heruntergeladen: '+name+'.html');
     }
   });
 }
 
 function loadProjectClick(){document.getElementById('load-input').click();}
+
+// Versucht, abgeschnittene Projekt-JSON-Dateien zu reparieren.
+// Passiert wenn Browser Data-URLs bei großen Projekten kürzt (Bug v1).
+// Gibt wiederhergestelltes Projekt-Objekt zurück oder null bei Misserfolg.
+function repairTruncatedProjectJSON(raw){
+  const pagesMarker=raw.indexOf('"pages"');
+  if(pagesMarker===-1) return null;
+  const header=raw.substring(0,pagesMarker);
+
+  // Zur öffnenden [ des pages-Arrays springen
+  let i=pagesMarker;
+  while(i<raw.length && raw[i]!=='[') i++;
+  if(i>=raw.length) return null;
+  i++; // [ überspringen
+
+  const completePages=[];
+  while(i<raw.length){
+    // Leerzeichen überspringen
+    while(i<raw.length && /\s/.test(raw[i])) i++;
+    if(i>=raw.length) break;
+    if(raw[i]===']') break;
+    if(raw[i]!=='{'){i++;continue;}
+
+    // Vollständiges Objekt suchen: { } mit korrekter String-Erkennung
+    const start=i;
+    let depth=0, inStr=false, esc=false, j=i;
+    for(;j<raw.length;j++){
+      const c=raw[j];
+      if(esc){esc=false;continue;}
+      if(c==='\\'&&inStr){esc=true;continue;}
+      if(c==='"'){inStr=!inStr;continue;}
+      if(inStr) continue;
+      if(c==='{') depth++;
+      else if(c==='}'){depth--;if(depth===0) break;}
+    }
+
+    if(depth===0 && j<raw.length){
+      // Vollständiges Objekt gefunden → parsen
+      try{
+        const page=JSON.parse(raw.substring(start,j+1));
+        if(page && page.id!==undefined && page.name && page.content!==undefined)
+          completePages.push(page);
+      }catch(e){}
+      i=j+1;
+    } else {
+      break; // Abschnitt beginnt hier – keine weiteren vollständigen Seiten
+    }
+    while(i<raw.length && /[\s,]/.test(raw[i])) i++;
+  }
+
+  if(completePages.length===0) return null;
+
+  // Metadaten aus dem Header extrahieren
+  let version=2, currentPageId=completePages[0].id, pageIdCounter=completePages.length;
+  const vm=header.match(/"version"\s*:\s*(\d+)/);        if(vm) version=parseInt(vm[1]);
+  const cm=header.match(/"currentPageId"\s*:\s*(\d+)/);  if(cm) currentPageId=parseInt(cm[1]);
+  const pm=header.match(/"pageIdCounter"\s*:\s*(\d+)/);  if(pm) pageIdCounter=parseInt(pm[1]);
+  // Sicherstellen, dass currentPageId auf eine gerettete Seite zeigt
+  if(!completePages.find(p=>p.id===currentPageId)) currentPageId=completePages[0].id;
+
+  return{version,currentPageId,pageIdCounter,pages:completePages,_recovered:completePages.length};
+}
 
 function loadProject(e){
   const file=e.target.files[0];if(!file)return;
@@ -2474,7 +2555,26 @@ function loadProject(e){
       showSaved('Projekt geladen'+migriert+'!');
 
     }catch(err){
-      alert('Fehler beim Laden der Datei.\n\nDetails: '+err.message);
+      // ── AUTOMATISCHE REPARATUR bei abgeschnittenen Dateien ──
+      try{
+        const repaired=repairTruncatedProjectJSON(ev.target.result);
+        if(!repaired) throw err;
+        pages=repaired.pages;
+        currentPageId=repaired.currentPageId;
+        pageIdCounter=repaired.pageIdCounter;
+        renderPageList(); loadPageIntoEditor(currentPageId);
+        showSaved('⚠️ '+repaired._recovered+' Seite(n) wiederhergestellt!');
+        setTimeout(()=>alert(
+          '⚠️ Die Datei war beschädigt und wurde automatisch repariert.\n\n'+
+          '✓ '+repaired._recovered+' Seite(n) wurden wiederhergestellt.\n'+
+          (repaired._recovered<repaired.pages.length
+            ? '✗ Möglicherweise fehlt die letzte Seite oder ein Bild war unvollständig.\n\n'
+            : '\n')+
+          'Bitte das Projekt jetzt sofort neu speichern!'
+        ),400);
+      }catch(e2){
+        alert('Fehler beim Laden der Datei.\n\nDetails: '+err.message);
+      }
     }
   };
   r.readAsText(file); e.target.value='';
